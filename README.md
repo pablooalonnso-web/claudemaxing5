@@ -1,8 +1,17 @@
 # Stockwell
 
-USDG vaults, lending and strategies for tokenized stocks on Robinhood Chain. A pixel-accurate rebuild of the TickerSpring
-front end with its own live data layer: every figure is read straight from the chain, and every action executes from
-the visitor's wallet.
+USDG vaults, lending and strategies for tokenized stocks on Robinhood Chain. The product and data layer come from the
+TickerSpring protocol front end; the visual system (blueprint grid, hexagon buttons, rulers and hatching, Anybody /
+DM Sans / Space Mono type) follows greptile.com. Every figure is read straight from the chain, and every action executes
+from the visitor's wallet.
+
+### Design system
+
+* Tokens live in `src/app/globals.css` (`:root`) and the shared utilities in `src/styles/greptile.css`: `.hex` buttons
+  (`.hex-notch`, `.hex-outline`, size and colour modifiers), `.div-ruler` / `.div-hatch` / `.div-double-dashed` dividers,
+  `.g-frame` hatched picture frames, `.g-rails` dashed section rails, `.g-pill-row` labels and the inner-page masthead.
+* Fonts are self-hosted in `src/fonts` and loaded through `next/font/local` (`src/lib/fonts.ts`).
+* Decorative assets (halftone hero, footer cube field, sphere, wave) are in `public/design` and `src/components/home/Art.tsx`.
 
 ## What is in the box
 

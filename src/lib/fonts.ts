@@ -1,5 +1,6 @@
 import localFont from "next/font/local";
 
+/** Body face. */
 export const dmSans = localFont({
   src: [
     { path: "../fonts/dm-sans-latin.woff2", style: "normal" },
@@ -12,28 +13,35 @@ export const dmSans = localFont({
   adjustFontFallback: "Arial",
 });
 
-export const dmMono = localFont({
+/** Display face for headings, buttons and quotes. */
+export const anybody = localFont({
   src: [
-    { path: "../fonts/dm-mono-400-latin.woff2", weight: "400", style: "normal" },
-    { path: "../fonts/dm-mono-400-latin-ext.woff2", weight: "400", style: "normal" },
-    { path: "../fonts/dm-mono-500-latin.woff2", weight: "500", style: "normal" },
-    { path: "../fonts/dm-mono-500-latin-ext.woff2", weight: "500", style: "normal" },
+    { path: "../fonts/anybody-latin.woff2", weight: "100 900", style: "normal" },
+    { path: "../fonts/anybody-italic-latin.woff2", weight: "100 900", style: "italic" },
   ],
   display: "swap",
-  variable: "--font-mono",
-  fallback: ["SF Mono", "Menlo", "monospace"],
+  variable: "--font-anybody",
+  fallback: ["Anybody Fallback", "Arial Black", "Arial"],
   adjustFontFallback: "Arial",
 });
 
-export const instrumentSerif = localFont({
+/** Utility face for labels, navigation and figures. */
+export const spaceMono = localFont({
   src: [
-    { path: "../fonts/instrument-serif-latin.woff2", weight: "400", style: "normal" },
-    { path: "../fonts/instrument-serif-latin-ext.woff2", weight: "400", style: "normal" },
-    { path: "../fonts/instrument-serif-italic-latin.woff2", weight: "400", style: "italic" },
-    { path: "../fonts/instrument-serif-italic-latin-ext.woff2", weight: "400", style: "italic" },
+    { path: "../fonts/space-mono-400-latin.woff2", weight: "400", style: "normal" },
+    { path: "../fonts/space-mono-700-latin.woff2", weight: "700", style: "normal" },
   ],
   display: "swap",
-  variable: "--font-serif",
-  fallback: ["Georgia", "Times New Roman", "serif"],
-  adjustFontFallback: "Times New Roman",
+  variable: "--font-mono",
+  fallback: ["Space Mono Fallback", "Menlo", "monospace"],
+  adjustFontFallback: "Arial",
+});
+
+/** Handwritten annotations. */
+export const nanumPen = localFont({
+  src: [{ path: "../fonts/nanum-pen-latin.woff2", weight: "400", style: "normal" }],
+  display: "swap",
+  variable: "--font-handwriting",
+  fallback: ["Comic Sans MS", "cursive"],
+  adjustFontFallback: false,
 });

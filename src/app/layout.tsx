@@ -1,9 +1,10 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import { BRAND } from "@/lib/brand";
-import { dmMono, dmSans, instrumentSerif } from "@/lib/fonts";
+import { anybody, dmSans, nanumPen, spaceMono } from "@/lib/fonts";
 import { Providers } from "@/components/Providers";
 import "./globals.css";
+import "@/styles/greptile.css";
 
 export const metadata: Metadata = {
   metadataBase: new URL(BRAND.siteUrl),
@@ -31,7 +32,7 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    <html lang="en" className={`${dmSans.variable} ${dmMono.variable} ${instrumentSerif.variable}`}>
+    <html lang="en" className={`${dmSans.variable} ${anybody.variable} ${spaceMono.variable} ${nanumPen.variable}`}>
       <body>
         <Providers>{children}</Providers>
       </body>
