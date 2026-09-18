@@ -7,10 +7,12 @@ import { ArrowRight, ArrowUpRight, Check, CircleAlert, RefreshCw } from "lucide-
 import { useProtocolVaults } from "@/components/data/ProtocolVaultProvider";
 import { StockLogo } from "@/components/StockLogo";
 import { useWallet } from "@/components/wallet/WalletProvider";
+import { txErrorMessage } from "@/components/vaults/txError";
+import { useT } from "@/i18n/client";
 import { erc20Abi, managedVaultAbi } from "@/lib/abis";
 import { BRAND } from "@/lib/brand";
 import { explorerTx, publicClient, robinhoodChain } from "@/lib/chain";
-import { buildWithdrawQuote, describeTxError, encodeApprove, encodeWithdraw, type WithdrawQuote } from "@/lib/managed-vault";
+import { buildWithdrawQuote, encodeApprove, encodeWithdraw, type WithdrawQuote } from "@/lib/managed-vault";
 import type { VaultPin } from "@/lib/registry";
 
 type Position = { pin: VaultPin; shares: bigint; value: number | null };
@@ -34,6 +36,7 @@ const usd = (n: number) => n.toLocaleString("en-US", { style: "currency", curren
 const PERCENTS = [25, 50, 100] as const;
 
 export function BasketExit() {
+  const t = useT("strategies");
   const { rows, singles } = useProtocolVaults();
   const { address: owner, connect, available, walletClient, chainId, switchChain } = useWallet();
   const [positions, setPositions] = useState<Position[] | null>(null);
@@ -80,41 +83,41 @@ export function BasketExit() {
       return;
     }
     let alive = true;
-    const t = setTimeout(async () => {
+    const timer = setTimeout(async () => {
       const out: Record<string, { ok: boolean; text: string }> = {};
       for (const leg of plan) {
         try {
           const q = await buildWithdrawQuote(leg.pin.preview, owner, leg.shares, toUsdg, previewClient(leg.pin.preview.vault as Address, leg.pin.preview.router as Address, owner));
           out[leg.pin.vault] = { ok: true, text: describeQuote(q, leg.pin) };
         } catch (e) {
-          out[leg.pin.vault] = { ok: false, text: e instanceof Error ? e.message : "No quote" };
+          out[leg.pin.vault] = { ok: false, text: e instanceof Error ? e.message : t("exit.noQuote") };
         }
         if (alive) setQuotes({ ...out });
       }
     }, 400);
     return () => {
       alive = false;
-      clearTimeout(t);
+      clearTimeout(timer);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [owner, toUsdg, legs, plan.map((p) => `${p.pin.vault}:${p.shares}`).join(",")]);
 
   function describeQuote(q: WithdrawQuote, pin: VaultPin) {
-    if (q.kind === "usdg") return `≈ ${Number(formatUnits(q.amount, 6)).toLocaleString("en-US", { maximumFractionDigits: 2 })} USDG`;
+    if (q.kind === "usdg") return t("exit.usdgQuote", { n: Number(formatUnits(q.amount, 6)).toLocaleString("en-US", { maximumFractionDigits: 2 }) });
     const stockIsToken0 = pin.preview.asset.toLowerCase() !== pin.preview.token0.toLowerCase();
     const stock = stockIsToken0 ? q.amounts[0] : q.amounts[1];
     const usdg = stockIsToken0 ? q.amounts[1] : q.amounts[0];
-    return `≈ ${Number(formatUnits(stock, 18)).toLocaleString("en-US", { maximumSignificantDigits: 4 })} ${pin.symbol} + ${Number(formatUnits(usdg, 6)).toLocaleString("en-US", { maximumFractionDigits: 2 })} USDG`;
+    return t("exit.tokensQuote", { stock: Number(formatUnits(stock, 18)).toLocaleString("en-US", { maximumSignificantDigits: 4 }), symbol: pin.symbol, usdg: Number(formatUnits(usdg, 6)).toLocaleString("en-US", { maximumFractionDigits: 2 }) });
   }
 
   async function send(to: Address, data: Hex) {
-    if (!walletClient || !owner) throw new Error("Connect your wallet");
+    if (!walletClient || !owner) throw new Error(t("error.connect"));
     const client = publicClient();
     await client.call({ account: owner, to, data });
     const gas = await client.estimateGas({ account: owner, to, data });
     const tx = await walletClient.sendTransaction({ account: owner, chain: robinhoodChain, to, data, value: 0n, gas: (gas * 120n) / 100n });
     const receipt = await client.waitForTransactionReceipt({ hash: tx, timeout: 120_000, pollingInterval: 1000 });
-    if (receipt.status !== "success") throw new Error("Transaction reverted; nothing changed.");
+    if (receipt.status !== "success") throw new Error(t("error.reverted"));
     return tx;
   }
   const update = (i: number, patch: Partial<Leg>) => setLegs((ls) => (ls ? ls.map((l, j) => (j === i ? { ...l, ...patch } : l)) : ls));
@@ -136,30 +139,30 @@ export function BasketExit() {
             const allowance = await client.readContract({ address: entry.vault as Address, abi: erc20Abi, functionName: "allowance", args: [owner, entry.router as Address] });
             if (allowance < leg.shares) {
               update(i, { status: "approving" });
-              setNote(`${leg.pin.symbol}: approve the router to redeem your shares`);
+              setNote(t("exit.approveNote", { symbol: leg.pin.symbol }));
               await send(entry.vault as Address, encodeApprove(entry.router as Address, leg.shares));
             }
           }
           update(i, { status: "withdrawing" });
-          setNote(`${leg.pin.symbol}: building the withdrawal…`);
+          setNote(t("exit.buildingNote", { symbol: leg.pin.symbol }));
           const quote = await buildWithdrawQuote(entry, owner, leg.shares, toUsdg);
-          if (Date.now() > quote.expires - 15_000) throw new Error("Quote expired. Retry this leg.");
-          setNote(`${leg.pin.symbol}: confirm the withdrawal in your wallet`);
+          if (Date.now() > quote.expires - 15_000) throw new Error(t("error.quoteExpiredLeg"));
+          setNote(t("exit.confirmNote", { symbol: leg.pin.symbol }));
           const hash = await send(quote.kind === "tokens" ? (entry.vault as Address) : (entry.router as Address), encodeWithdraw(quote));
           update(i, { status: "done", hash, received: describeQuote(quote, leg.pin) });
           window.dispatchEvent(new Event(BRAND.vaultUpdatedEvent));
         } catch (e) {
-          update(i, { status: "failed", error: describeTxError(e) });
+          update(i, { status: "failed", error: txErrorMessage(e, t) });
           for (let j = i + 1; j < startLegs.length; j++) update(j, { status: "skipped" });
           setNote("");
-          setError(`${leg.pin.symbol} did not complete. Retry from this leg; finished legs stay as they are.`);
+          setError(t("exit.legFailed", { symbol: leg.pin.symbol }));
           return;
         }
       }
-      setNote("Exit complete. Balances refresh in a moment.");
+      setNote(t("exit.complete"));
       await refresh();
     } catch (e) {
-      setError(describeTxError(e));
+      setError(txErrorMessage(e, t));
     } finally {
       busyRef.current = false;
       setBusy(false);
@@ -193,51 +196,51 @@ export function BasketExit() {
     <section className="basket-panel basket-exit" aria-labelledby="basket-exit-heading">
       <div className="basket-panel-head">
         <div>
-          <p className="eyebrow">Exit</p>
-          <h2 id="basket-exit-heading">Leave several vaults in one flow.</h2>
+          <p className="eyebrow">{t("exit.eyebrow")}</p>
+          <h2 id="basket-exit-heading">{t("exit.title")}</h2>
         </div>
         <span className="strategy-status strategy-status-live">
-          <i aria-hidden="true" /> Live · you sign each step
+          <i aria-hidden="true" /> {t("plan.live")}
         </span>
       </div>
       {!owner ? (
         <div className="basket-foot">
-          <p className="basket-muted">Connect a wallet to see which vaults you hold and exit the ones you pick.</p>
+          <p className="basket-muted">{t("exit.connectIntro")}</p>
           <button type="button" className="hex hex-green" onClick={() => void connect()} disabled={!available}>
-            {available ? "Connect wallet" : "No wallet detected"}
+            {available ? t("foot.connect") : t("foot.noWallet")}
           </button>
         </div>
       ) : !positions ? (
-        <p className="basket-muted">Reading your positions…</p>
+        <p className="basket-muted">{t("hints.reading")}</p>
       ) : positions.length === 0 ? (
-        <p className="basket-muted">No vault positions in this wallet. Nothing to exit.</p>
+        <p className="basket-muted">{t("exit.none")}</p>
       ) : (
         <>
           <div className="basket-exit-controls">
-            <div className="basket-size" role="radiogroup" aria-label="Share of each position to withdraw">
-              <span>Withdraw</span>
+            <div className="basket-size" role="radiogroup" aria-label={t("exit.percentAria")}>
+              <span>{t("exit.withdraw")}</span>
               {PERCENTS.map((n) => (
                 <button key={n} type="button" role="radio" aria-checked={percent === n} className={percent === n ? "active" : ""} disabled={busy || !!legs} onClick={() => setPercent(n)}>
                   {n}%
                 </button>
               ))}
             </div>
-            <div className="basket-size" role="radiogroup" aria-label="Receive">
-              <span>Receive</span>
+            <div className="basket-size" role="radiogroup" aria-label={t("exit.receive")}>
+              <span>{t("exit.receive")}</span>
               <button type="button" role="radio" aria-checked={toUsdg} className={toUsdg ? "active" : ""} disabled={busy || !!legs} onClick={() => setToUsdg(true)}>
                 USDG
               </button>
               <button type="button" role="radio" aria-checked={!toUsdg} className={!toUsdg ? "active" : ""} disabled={busy || !!legs} onClick={() => setToUsdg(false)}>
-                Tokens
+                {t("exit.tokens")}
               </button>
             </div>
             {!legs ? (
               <button type="button" className="basket-link" disabled={busy} onClick={() => setSelected(selected.size === positions.length ? new Set() : new Set(positions.map((p) => p.pin.vault)))}>
-                {selected.size === positions.length ? "Clear" : "Select all"}
+                {selected.size === positions.length ? t("exit.clear") : t("exit.selectAll")}
               </button>
             ) : null}
           </div>
-          <ol className="basket-legs" aria-label="Positions">
+          <ol className="basket-legs" aria-label={t("exit.positionsAria")}>
             {(legs ? legs.map((l) => positions.find((p) => p.pin.vault === l.pin.vault) ?? { pin: l.pin, shares: l.shares, value: null }) : positions).map((p, i) => {
               const leg = legs?.[i];
               const on = legs ? true : selected.has(p.pin.vault);
@@ -250,7 +253,7 @@ export function BasketExit() {
                       className="basket-check"
                       checked={on}
                       disabled={busy}
-                      aria-label={`Include ${p.pin.symbol}`}
+                      aria-label={t("exit.include", { symbol: p.pin.symbol })}
                       onChange={(e) => {
                         const next = new Set(selected);
                         if (e.target.checked) next.add(p.pin.vault);
@@ -263,36 +266,34 @@ export function BasketExit() {
                   )}
                   <StockLogo symbol={p.pin.symbol} size={36} />
                   <div className="basket-leg-main">
-                    <b>{p.pin.symbol} vault</b>
-                    <span>
-                      {Number(formatUnits(p.shares, 18)).toLocaleString("en-US", { maximumSignificantDigits: 5 })} shares · {p.value === null ? "valuing…" : usd(p.value)}
-                    </span>
+                    <b>{t("legs.vault", { symbol: p.pin.symbol })}</b>
+                    <span>{t("exit.sharesMeta", { n: Number(formatUnits(p.shares, 18)).toLocaleString("en-US", { maximumSignificantDigits: 5 }), value: p.value === null ? t("exit.valuing") : usd(p.value) })}</span>
                   </div>
                   <div className="basket-leg-amount">
                     <b className="mono">{legs ? `${percent}%` : on ? `${percent}%` : "–"}</b>
-                    <span className="mono">{leg?.received ?? (on ? (q ? q.text : "quoting…") : "")}</span>
+                    <span className="mono">{leg?.received ?? (on ? (q ? q.text : t("legs.quoting")) : "")}</span>
                   </div>
                   <span className={`basket-leg-status ${leg ? leg.status : "plan"}`}>
                     {!leg ? (
                       <Link href={p.pin.href}>
-                        Vault <ArrowUpRight size={12} aria-hidden="true" />
+                        {t("legs.vaultLink")} <ArrowUpRight size={12} aria-hidden="true" />
                       </Link>
                     ) : leg.status === "done" ? (
                       <a href={leg.hash ? explorerTx(leg.hash) : "#"} target="_blank" rel="noopener noreferrer">
-                        <Check size={13} aria-hidden="true" /> Withdrawn
+                        <Check size={13} aria-hidden="true" /> {t("exit.withdrawn")}
                       </a>
                     ) : leg.status === "failed" ? (
                       <>
-                        <CircleAlert size={13} aria-hidden="true" /> Failed
+                        <CircleAlert size={13} aria-hidden="true" /> {t("legs.failed")}
                       </>
                     ) : leg.status === "approving" ? (
-                      "Approving…"
+                      t("legs.approving")
                     ) : leg.status === "withdrawing" ? (
-                      "Withdrawing…"
+                      t("exit.withdrawing")
                     ) : leg.status === "skipped" ? (
-                      "Waiting"
+                      t("legs.waiting")
                     ) : (
-                      "Queued"
+                      t("legs.queued")
                     )}
                   </span>
                 </li>
@@ -306,31 +307,36 @@ export function BasketExit() {
               ) : note ? (
                 <p>{note}</p>
               ) : plan.length === 0 ? (
-                <p>Pick the vaults to leave. Each exit is the same redemption the vault page makes: to USDG through the router&apos;s protected swap, or to both pool tokens.</p>
+                <p>{t("exit.pick")}</p>
               ) : plan.some((p) => quotes[p.pin.vault] && !quotes[p.pin.vault].ok) ? (
                 <p>{plan.filter((p) => quotes[p.pin.vault] && !quotes[p.pin.vault].ok).map((p) => `${p.pin.symbol}: ${quotes[p.pin.vault].text}`).join(" · ")}</p>
               ) : (
                 <p>
-                  {percent}% of {plan.length} position{plan.length === 1 ? "" : "s"}, about {usd(totalValue)}, {toUsdg ? "to USDG" : "to tokens"}. {toUsdg ? `${plan.length} approval${plan.length === 1 ? "" : "s"} and ` : ""}
-                  {plan.length} withdrawal{plan.length === 1 ? "" : "s"} to sign, one after another.
+                  {t("exit.summary", {
+                    percent,
+                    positions: t(plan.length === 1 ? "exit.positionsOne" : "exit.positionsMany", { n: plan.length }),
+                    value: usd(totalValue),
+                    target: toUsdg ? t("exit.toUsdg") : t("exit.toTokens"),
+                    steps: `${toUsdg ? t(plan.length === 1 ? "exit.approvalsOne" : "exit.approvalsMany", { n: plan.length }) : ""}${t(plan.length === 1 ? "exit.withdrawalsOne" : "exit.withdrawalsMany", { n: plan.length })}`,
+                  })}
                 </p>
               )}
             </div>
             {legs && legs.some((l) => l.status === "failed") ? (
               <button type="button" className="hex hex-green" onClick={retry} disabled={busy}>
-                <RefreshCw size={14} aria-hidden="true" /> Retry from the failed leg
+                <RefreshCw size={14} aria-hidden="true" /> {t("foot.retry")}
               </button>
             ) : legs && legs.every((l) => l.status === "done") ? (
               <button type="button" className="hex hex-green" onClick={reset}>
-                Done <Check size={14} aria-hidden="true" />
+                {t("exit.done")} <Check size={14} aria-hidden="true" />
               </button>
             ) : legs ? (
               <button type="button" className="hex hex-green" disabled>
-                <span className="managed-progress-spinner" aria-hidden="true" /> Signing…
+                <span className="managed-progress-spinner" aria-hidden="true" /> {t("foot.signing")}
               </button>
             ) : (
               <button type="button" className="hex hex-green" onClick={start} disabled={!allQuoted || busy}>
-                Exit selected <ArrowRight size={14} aria-hidden="true" />
+                {t("exit.exitSelected")} <ArrowRight size={14} aria-hidden="true" />
               </button>
             )}
           </div>

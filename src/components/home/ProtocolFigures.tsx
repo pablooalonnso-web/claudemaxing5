@@ -6,6 +6,7 @@ import { useTokenBurn } from "@/components/data/useTokenBurn";
 import { CHAIN_NAME } from "@/lib/brand";
 import { formatUsd, usdgToNumber } from "@/lib/format";
 import { sumColumn } from "@/lib/vault-math";
+import { useT } from "@/i18n/client";
 
 function Cell({ label, sub, value, note }: { label: string; sub: string; value: string; note: string }) {
   return (
@@ -21,6 +22,7 @@ function Cell({ label, sub, value, note }: { label: string; sub: string; value: 
 }
 
 export function ProtocolFigures() {
+  const t = useT("home");
   const { snapshot, error } = useProtocolVaults();
   const burn = useTokenBurn();
   const rows = snapshot?.rows.filter((r) => r.kind === "single" || r.kind === "managed") ?? null;
@@ -32,17 +34,17 @@ export function ProtocolFigures() {
   const inRange = rows ? rows.filter((r) => r.apr !== null).length : null;
   return (
     <>
-      <Cell label="Total value locked" sub="USDG · all vaults" value={total("assets")} note={`Across ${rows ? rows.length : "–"} Stock Token vaults, read from the chain and refreshed every 15 seconds.`} />
-      <Cell label="Fees earned, lifetime" sub="gross · incl. unclaimed" value={total("fees")} note="Trading fees collected by the vaults' LP positions, including fees earned but not yet claimed." />
+      <Cell label={t("pf.tvl.label")} sub={t("pf.tvl.sub")} value={total("assets")} note={t("pf.tvl.note", { count: rows ? rows.length : "–" })} />
+      <Cell label={t("pf.fees.label")} sub={t("pf.fees.sub")} value={total("fees")} note={t("pf.fees.note")} />
       <Cell
-        label="Protocol token burned"
-        sub="0x…dEaD balance"
+        label={t("pf.burned.label")}
+        sub={t("pf.burned.sub")}
         value={burned}
-        note={ready ? `${share?.toLocaleString("en-US", { maximumFractionDigits: 2 })}% of supply. 20% of claimed fees funds buybacks and burns.` : burn ? "Burn data unavailable right now." : "Reading the burn address…"}
+        note={ready ? t("pf.burned.note", { share: share?.toLocaleString("en-US", { maximumFractionDigits: 2 }) ?? "" }) : burn ? t("pf.burned.unavailable") : t("pf.burned.reading")}
       />
-      <Cell label="Vaults with a live APR" sub="rolling 24h window" value={inRange === null ? "–" : String(inRange)} note="Fee APR is estimated from observed pool fees over the last 24 hours; it warms up as samples accumulate." />
-      <Cell label="Chain" sub="chain id 4663" value={CHAIN_NAME} note="Every vault, market and token contract lives on Robinhood Chain and is verifiable on Blockscout." />
-      <Cell label="Fee split" sub="on claimed fees only" value="70 / 20 / 10" note={error ? "Some totals could not refresh; retrying automatically." : `70% compounds into the vault, 20% is reserved for token buybacks and burns, 10% goes to the protocol treasury.`} />
+      <Cell label={t("pf.live.label")} sub={t("pf.live.sub")} value={inRange === null ? "–" : String(inRange)} note={t("pf.live.note")} />
+      <Cell label={t("pf.chain.label")} sub={t("pf.chain.sub")} value={CHAIN_NAME} note={t("pf.chain.note")} />
+      <Cell label={t("pf.split.label")} sub={t("pf.split.sub")} value="70 / 20 / 10" note={error ? t("pf.split.error") : t("pf.split.note")} />
     </>
   );
 }

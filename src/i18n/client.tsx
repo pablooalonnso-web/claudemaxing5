@@ -2,7 +2,8 @@
 
 import { createContext, useContext, useMemo, type ReactNode } from "react";
 import { DEFAULT_LOCALE, LOCALE_COOKIE, type Locale } from "./config";
-import { makeT, type Namespace, type TFunction } from "./index";
+import { makeT, type TFunction } from "./format";
+import type { Namespace } from "./messages";
 import type { Table } from "./types";
 
 type Ctx = { locale: Locale; messages: Partial<Record<Namespace, Table>> };

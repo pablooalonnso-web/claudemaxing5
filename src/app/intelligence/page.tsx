@@ -4,18 +4,23 @@ import { ArrowLeft, ArrowUpRight, Plus } from "lucide-react";
 import { SiteHeader } from "@/components/SiteHeader";
 import { Countdown } from "@/components/intelligence/Countdown";
 import { IntelligenceOrbit } from "@/components/intelligence/IntelligenceOrbit";
+import { getT } from "@/i18n/server";
 import { BRAND } from "@/lib/brand";
 import styles from "@/styles/intelligence.module.css";
 import { SiteFooter } from "@/components/SiteFooter";
 import { IntelligenceDesk } from "@/components/intelligence/IntelligenceDesk";
 import { analystOnline, composeBrief, getBrief, getSignals, GUIDED_QUESTIONS } from "@/server/intelligence";
 
-export const metadata: Metadata = { title: `Intelligence · ${BRAND.name}`, description: "Live signals from the 18 vaults and the lending market, a written brief and a question box, all grounded in chain reads." };
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getT("intelligence");
+  return { title: `${t("meta.title")} · ${BRAND.name}`, description: t("meta.description") };
+}
 export const dynamic = "force-dynamic";
 
 const REVEAL = "2026-09-18T09:00:00Z";
 
 export default async function IntelligencePage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
+  const t = await getT("intelligence");
   const params = await searchParams;
   const revealed = Date.now() >= Date.parse(REVEAL) || params.preview === "1";
   if (revealed) {
@@ -30,16 +35,13 @@ export default async function IntelligencePage({ searchParams }: { searchParams:
           <div className="masthead-inner">
             <div className="masthead-head">
               <div className="masthead-title">
-                <p className="eyebrow">Intelligence · live</p>
+                <p className="eyebrow">{t("live.eyebrow")}</p>
                 <h1>
-                  The chain, <em className="serif">read out loud.</em>
+                  {t("live.title.before")}
+                  <em className="serif">{t("live.title.em")}</em>
                 </h1>
               </div>
-              <p className="masthead-intro">
-                {online
-                  ? "Every minute the server reads all 18 vaults and the lending market and turns the numbers into signals. A rules engine writes the brief and answers the guided questions; a language model adds a second reading and takes free questions. Both see nothing but the chain and never tell you what to do with yours."
-                  : "Every minute the server reads all 18 vaults and the lending market and turns the numbers into signals, a written brief and answers to the questions people ask most. No model, no guesswork: every sentence is a rule filled with a number read from the chain a moment earlier."}
-              </p>
+              <p className="masthead-intro">{online ? t("live.intro.online") : t("live.intro.offline")}</p>
             </div>
           </div>
         </section>
@@ -54,28 +56,29 @@ export default async function IntelligencePage({ searchParams }: { searchParams:
       <section className={styles.chamber} aria-labelledby="intelligence-title">
         <div className={styles.topline}>
           <span className={styles.status}>
-            <span /> Coming soon
+            <span /> {t("teaser.status")}
           </span>
-          <span className={styles.edition}>{BRAND.nameUpper} / NEXT CHAPTER</span>
+          <span className={styles.edition}>{t("teaser.edition", { brand: BRAND.nameUpper })}</span>
         </div>
         <div className={styles.hero}>
           <div className={styles.copy}>
             <p className={styles.eyebrow}>
-              Onchain intelligence <span>×</span> DeFi
+              {t("teaser.eyebrow.before")} <span>×</span> {t("teaser.eyebrow.after")}
             </p>
             <h1 id="intelligence-title">
-              A new primitive.
+              {t("teaser.title.before")}
               <br />
-              <em>For capital.</em>
+              <em>{t("teaser.title.em")}</em>
             </h1>
             <p className={styles.intro}>
-              Signals and DeFi, brought together.
-              <br />A new foundation for how capital moves onchain.
+              {t("teaser.intro.1")}
+              <br />
+              {t("teaser.intro.2")}
             </p>
-            <p className={styles.secret}>Intelligence at the core. The rest, under wraps.</p>
+            <p className={styles.secret}>{t("teaser.secret")}</p>
             <a className={styles.follow} href={BRAND.xUrl} target="_blank" rel="noopener noreferrer">
-              Follow the reveal <ArrowUpRight size={17} aria-hidden="true" />
-              <span className={styles.srOnly}> on X (opens in a new tab)</span>
+              {t("teaser.follow")} <ArrowUpRight size={17} aria-hidden="true" />
+              <span className={styles.srOnly}>{t("teaser.follow.sr")}</span>
             </a>
           </div>
           <div className={styles.signal} aria-hidden="true">
@@ -83,31 +86,32 @@ export default async function IntelligencePage({ searchParams }: { searchParams:
             <IntelligenceOrbit />
             <div className={styles.axisHorizontal} />
             <div className={styles.axisVertical} />
-            <span className={styles.signalLabel}>FORM / UNKNOWN</span>
+            <span className={styles.signalLabel}>{t("teaser.signalLabel")}</span>
             <span className={styles.signalIndex}>{BRAND.name.slice(0, 2).toUpperCase()} · 01</span>
           </div>
         </div>
         <div className={styles.reveal}>
           <div className={styles.revealCopy}>
-            <p className={styles.eyebrow}>The countdown begins</p>
+            <p className={styles.eyebrow}>{t("teaser.countdown.eyebrow")}</p>
             <p className={styles.revealDate}>
-              Estimated reveal <time dateTime={REVEAL}>September 18, 2026, 09:00 UTC (11:00 CEST)</time>
+              {t("teaser.reveal.before")}
+              <time dateTime={REVEAL}>{t("teaser.reveal.date")}</time>
             </p>
-            <p className={styles.estimate}>An early look. Timing may evolve.</p>
+            <p className={styles.estimate}>{t("teaser.estimate")}</p>
           </div>
           <Countdown target={REVEAL} />
         </div>
         <div className={styles.bottomline}>
-          <span>TWO WORLDS. ONE NEW PRIMITIVE.</span>
+          <span>{t("teaser.bottom.1")}</span>
           <Plus size={14} aria-hidden="true" />
-          <span>MORE WHEN THE TIME IS RIGHT.</span>
+          <span>{t("teaser.bottom.2")}</span>
         </div>
       </section>
       <footer className={styles.footer}>
         <Link href="/">
-          <ArrowLeft size={14} aria-hidden="true" /> Back to {BRAND.name}
+          <ArrowLeft size={14} aria-hidden="true" /> {t("teaser.back", { brand: BRAND.name })}
         </Link>
-        <span>Something worth waiting for.</span>
+        <span>{t("teaser.tagline")}</span>
         <span>© {new Date().getFullYear()} {BRAND.name}</span>
       </footer>
     </main>

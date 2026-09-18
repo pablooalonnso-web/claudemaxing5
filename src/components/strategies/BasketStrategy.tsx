@@ -7,11 +7,14 @@ import { ArrowRight, ArrowUpRight, Check, CircleAlert, Lock, RefreshCw } from "l
 import { useProtocolVaults } from "@/components/data/ProtocolVaultProvider";
 import { StockLogo } from "@/components/StockLogo";
 import { useWallet } from "@/components/wallet/WalletProvider";
+import { txErrorMessage } from "@/components/vaults/txError";
+import { useT } from "@/i18n/client";
+import type { TFunction } from "@/i18n";
 import { erc20Abi, managedVaultAbi } from "@/lib/abis";
 import { BASKET_MIN_PER_VAULT, BASKET_SIZES, BASKET_TVL_FLOOR, rankVaults, rebalanceHints, splitBudget, type BasketPosition, type RankedVault } from "@/lib/basket";
 import { BRAND } from "@/lib/brand";
 import { explorerTx, publicClient, robinhoodChain, USDG_ADDRESS } from "@/lib/chain";
-import { buildDepositQuote, describeTxError, encodeApprove, encodeDeposit } from "@/lib/managed-vault";
+import { buildDepositQuote, encodeApprove, encodeDeposit } from "@/lib/managed-vault";
 import { formatPercent } from "@/lib/format";
 
 type LegStatus = "pending" | "approving" | "depositing" | "done" | "failed" | "skipped";
@@ -20,14 +23,18 @@ type Leg = { vault: RankedVault; amount: bigint; shares: bigint | null; status: 
 const usd = (n: number) => n.toLocaleString("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 });
 const fmtUsdg = (raw: bigint) => Number(formatUnits(raw, 6)).toLocaleString("en-US", { maximumFractionDigits: 2 });
 
-function parseAmount(value: string) {
-  if (!/^(?:0|[1-9][0-9]*)(?:\.[0-9]{1,6})?$/.test(value)) throw new Error("Enter a valid USDG amount");
+function parseAmount(value: string, t: TFunction) {
+  if (!/^(?:0|[1-9][0-9]*)(?:\.[0-9]{1,6})?$/.test(value)) throw new Error(t("error.invalidUsdg"));
   const raw = parseUnits(value, 6);
-  if (raw <= 0n) throw new Error("Enter an amount above zero");
+  if (raw <= 0n) throw new Error(t("error.aboveZero"));
   return raw;
 }
 
+/** Why the router could not quote a vault; translated at render as `excluded.<key>`. */
+type ExcludedReason = "guard" | "fit" | "quote";
+
 export function BasketStrategy() {
+  const t = useT("strategies");
   const { rows, singles, error: feedError } = useProtocolVaults();
   const { address: owner, connect, walletClient, chainId, switchChain, available } = useWallet();
   const [size, setSize] = useState<(typeof BASKET_SIZES)[number]>(4);
@@ -39,7 +46,7 @@ export function BasketStrategy() {
   const [error, setError] = useState("");
   const [positions, setPositions] = useState<BasketPosition[] | null>(null);
   /** Vaults the router cannot quote right now (price guard, thin range); the next ranked vault takes their place. */
-  const [excluded, setExcluded] = useState<Record<string, string>>({});
+  const [excluded, setExcluded] = useState<Record<string, ExcludedReason>>({});
   const busyRef = useRef(false);
 
   const ranking = useMemo(() => (rows ? rankVaults(rows, singles) : []), [rows, singles]);
@@ -75,10 +82,10 @@ export function BasketStrategy() {
 
   useEffect(() => {
     void refreshWallet();
-    const t = setInterval(() => document.visibilityState === "visible" && void refreshWallet(), 30_000);
+    const timer = setInterval(() => document.visibilityState === "visible" && void refreshWallet(), 30_000);
     window.addEventListener(BRAND.vaultUpdatedEvent, refreshWallet);
     return () => {
-      clearInterval(t);
+      clearInterval(timer);
       window.removeEventListener(BRAND.vaultUpdatedEvent, refreshWallet);
     };
   }, [refreshWallet]);
@@ -88,14 +95,14 @@ export function BasketStrategy() {
     if (legs) return null;
     let raw: bigint;
     try {
-      raw = parseAmount(amount);
+      raw = parseAmount(amount, t);
     } catch {
       return null;
     }
     if (top.length < size) return null;
     const split = splitBudget(raw, size);
     return top.map((vault, i) => ({ vault, amount: split[i] }));
-  }, [amount, top, size, legs]);
+  }, [amount, top, size, legs, t]);
   const perLegTooSmall = plan ? plan.some((p) => Number(formatUnits(p.amount, 6)) < BASKET_MIN_PER_VAULT) : false;
   const overBalance = plan && usdgBalance !== null ? plan.reduce((a, p) => a + p.amount, 0n) > usdgBalance : false;
 
@@ -106,7 +113,7 @@ export function BasketStrategy() {
       return;
     }
     let alive = true;
-    const t = setTimeout(async () => {
+    const timer = setTimeout(async () => {
       const out: Record<string, bigint | null> = {};
       for (const p of plan) {
         try {
@@ -115,7 +122,7 @@ export function BasketStrategy() {
         } catch (e) {
           if (!alive) return;
           const msg = e instanceof Error ? e.message : "";
-          const reason = /validatePool|Waiting for valid prices/i.test(msg) ? "the price guard is holding deposits right now" : /below the minimum|safe swap size/i.test(msg) ? "this amount does not fit its pool" : "the router could not quote it";
+          const reason: ExcludedReason = /validatePool|Waiting for valid prices/i.test(msg) ? "guard" : /below the minimum|safe swap size/i.test(msg) ? "fit" : "quote";
           setExcluded((x) => ({ ...x, [p.vault.pin.vault]: reason }));
           return; // the ranking shifts; this effect runs again for the replacement
         }
@@ -124,7 +131,7 @@ export function BasketStrategy() {
     }, 500);
     return () => {
       alive = false;
-      clearTimeout(t);
+      clearTimeout(timer);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [amount, size, owner, perLegTooSmall, overBalance, plan?.map((p) => p.vault.pin.vault).join(",")]);
@@ -133,13 +140,13 @@ export function BasketStrategy() {
   }, [amount]);
 
   async function send(to: Address, data: Hex) {
-    if (!walletClient || !owner) throw new Error("Connect your wallet");
+    if (!walletClient || !owner) throw new Error(t("error.connect"));
     const client = publicClient();
     await client.call({ account: owner, to, data });
     const gas = await client.estimateGas({ account: owner, to, data });
     const tx = await walletClient.sendTransaction({ account: owner, chain: robinhoodChain, to, data, value: 0n, gas: (gas * 120n) / 100n });
     const receipt = await client.waitForTransactionReceipt({ hash: tx, timeout: 120_000, pollingInterval: 1000 });
-    if (receipt.status !== "success") throw new Error("Transaction reverted; nothing changed.");
+    if (receipt.status !== "success") throw new Error(t("error.reverted"));
     return tx;
   }
 
@@ -158,34 +165,34 @@ export function BasketStrategy() {
         if (leg.status === "done") continue;
         const entry = leg.vault.pin.preview;
         try {
-          setNote(`${leg.vault.pin.symbol}: checking allowance…`);
+          setNote(t("note.checkingAllowance", { symbol: leg.vault.pin.symbol }));
           const allowance = await client.readContract({ address: USDG_ADDRESS, abi: erc20Abi, functionName: "allowance", args: [owner, entry.router as Address] });
           if (allowance < leg.amount) {
             update(i, { status: "approving" });
-            setNote(`${leg.vault.pin.symbol}: approve ${fmtUsdg(leg.amount)} USDG in your wallet`);
+            setNote(t("note.approve", { symbol: leg.vault.pin.symbol, amount: fmtUsdg(leg.amount) }));
             if (allowance > 0n) await send(USDG_ADDRESS, encodeApprove(entry.router as Address, 0n));
             await send(USDG_ADDRESS, encodeApprove(entry.router as Address, leg.amount));
           }
           update(i, { status: "depositing" });
-          setNote(`${leg.vault.pin.symbol}: building the deposit…`);
+          setNote(t("note.building", { symbol: leg.vault.pin.symbol }));
           const quote = await buildDepositQuote(entry, owner, leg.amount, true);
-          if (Date.now() > quote.expires - 15_000) throw new Error("Quote expired. Retry this leg.");
-          setNote(`${leg.vault.pin.symbol}: confirm the deposit in your wallet`);
+          if (Date.now() > quote.expires - 15_000) throw new Error(t("error.quoteExpiredLeg"));
+          setNote(t("note.confirm", { symbol: leg.vault.pin.symbol }));
           const hash = await send(entry.router as Address, encodeDeposit(quote.entry));
           update(i, { status: "done", hash, shares: quote.shares });
           window.dispatchEvent(new Event(BRAND.vaultUpdatedEvent));
         } catch (e) {
-          update(i, { status: "failed", error: describeTxError(e) });
+          update(i, { status: "failed", error: txErrorMessage(e, t) });
           for (let j = i + 1; j < startLegs.length; j++) update(j, { status: "skipped" });
           setNote("");
-          setError(`${leg.vault.pin.symbol} did not complete. Fix the issue and retry from this leg; completed legs stay as they are.`);
+          setError(t("error.legFailed", { symbol: leg.vault.pin.symbol }));
           return;
         }
       }
-      setNote("Basket complete. Every leg is a normal vault position in your wallet.");
+      setNote(t("note.complete"));
       await refreshWallet();
     } catch (e) {
-      setError(describeTxError(e));
+      setError(txErrorMessage(e, t));
     } finally {
       busyRef.current = false;
       setBusy(false);
@@ -217,25 +224,25 @@ export function BasketStrategy() {
       <section className="basket-panel" aria-labelledby="basket-plan-heading">
         <div className="basket-panel-head">
           <div>
-            <p className="eyebrow">01 · Volatile basket</p>
-            <h2 id="basket-plan-heading">One deposit, the top {size} vaults.</h2>
+            <p className="eyebrow">{t("plan.eyebrow")}</p>
+            <h2 id="basket-plan-heading">{t("plan.title", { size })}</h2>
           </div>
           <span className="strategy-status strategy-status-live">
-            <i aria-hidden="true" /> Live · you sign each step
+            <i aria-hidden="true" /> {t("plan.live")}
           </span>
         </div>
         <div className="basket-controls">
           <label className="amount-box amount-box-input" htmlFor="basket-amount">
             <div className="amount-box-top">
-              <span>Total USDG</span>
+              <span>{t("plan.total")}</span>
               <span>
-                Balance <b className="mono">{usdgBalance === null ? "–" : fmtUsdg(usdgBalance)}</b>
+                {t("plan.balance")} <b className="mono">{usdgBalance === null ? "–" : fmtUsdg(usdgBalance)}</b>
                 {usdgBalance !== null ? (
                   <>
                     {" "}
                     ·{" "}
                     <button type="button" className="max-link" disabled={busy} onClick={() => setAmount(formatUnits(usdgBalance, 6))}>
-                      Max
+                      {t("plan.max")}
                     </button>
                   </>
                 ) : null}
@@ -246,8 +253,8 @@ export function BasketStrategy() {
               <span>USDG</span>
             </div>
           </label>
-          <div className="basket-size" role="radiogroup" aria-label="Number of vaults">
-            <span>Vaults</span>
+          <div className="basket-size" role="radiogroup" aria-label={t("plan.sizeAria")}>
+            <span>{t("plan.vaults")}</span>
             {BASKET_SIZES.map((n) => (
               <button key={n} type="button" role="radio" aria-checked={size === n} className={size === n ? "active" : ""} disabled={busy || !!legs} onClick={() => setSize(n)}>
                 {n}
@@ -256,7 +263,7 @@ export function BasketStrategy() {
           </div>
         </div>
 
-        <ol className="basket-legs" aria-label="Basket plan">
+        <ol className="basket-legs" aria-label={t("plan.legsAria")}>
           {(lockedRanking ?? top).map((v, i) => {
             const leg = legs?.[i];
             const legAmount = leg?.amount ?? plan?.[i]?.amount ?? null;
@@ -266,36 +273,34 @@ export function BasketStrategy() {
                 <span className="basket-rank">{String(i + 1).padStart(2, "0")}</span>
                 <StockLogo symbol={v.pin.symbol} size={36} />
                 <div className="basket-leg-main">
-                  <b>{v.pin.symbol} vault</b>
-                  <span>
-                    {formatPercent(v.apr)} fee APR · {usd(v.tvl)} in vault
-                  </span>
+                  <b>{t("legs.vault", { symbol: v.pin.symbol })}</b>
+                  <span>{t("legs.meta", { apr: formatPercent(v.apr), tvl: usd(v.tvl) })}</span>
                 </div>
                 <div className="basket-leg-amount">
-                  <b className="mono">{legAmount !== null ? `${fmtUsdg(legAmount)} USDG` : "–"}</b>
-                  <span className="mono">{est === undefined ? "quoting…" : est === null ? (legAmount ? "no quote" : "") : `≈ ${Number(formatUnits(est, 18)).toLocaleString("en-US", { maximumSignificantDigits: 5 })} shares`}</span>
+                  <b className="mono">{legAmount !== null ? t("legs.amount", { amount: fmtUsdg(legAmount) }) : "–"}</b>
+                  <span className="mono">{est === undefined ? t("legs.quoting") : est === null ? (legAmount ? t("legs.noQuote") : "") : t("legs.shares", { n: Number(formatUnits(est, 18)).toLocaleString("en-US", { maximumSignificantDigits: 5 }) })}</span>
                 </div>
                 <span className={`basket-leg-status ${leg ? leg.status : "plan"}`}>
                   {!leg ? (
                     <Link href={v.pin.href}>
-                      Vault <ArrowUpRight size={12} aria-hidden="true" />
+                      {t("legs.vaultLink")} <ArrowUpRight size={12} aria-hidden="true" />
                     </Link>
                   ) : leg.status === "done" ? (
                     <a href={leg.hash ? explorerTx(leg.hash) : "#"} target="_blank" rel="noopener noreferrer">
-                      <Check size={13} aria-hidden="true" /> Deposited
+                      <Check size={13} aria-hidden="true" /> {t("legs.deposited")}
                     </a>
                   ) : leg.status === "failed" ? (
                     <>
-                      <CircleAlert size={13} aria-hidden="true" /> Failed
+                      <CircleAlert size={13} aria-hidden="true" /> {t("legs.failed")}
                     </>
                   ) : leg.status === "approving" ? (
-                    "Approving…"
+                    t("legs.approving")
                   ) : leg.status === "depositing" ? (
-                    "Depositing…"
+                    t("legs.depositing")
                   ) : leg.status === "skipped" ? (
-                    "Waiting"
+                    t("legs.waiting")
                   ) : (
-                    "Queued"
+                    t("legs.queued")
                   )}
                 </span>
               </li>
@@ -303,13 +308,11 @@ export function BasketStrategy() {
           })}
           {!lockedRanking && skipped.length ? (
             <li className="basket-leg basket-leg-empty">
-              {skipped.map((v) => `${v.pin.symbol} skipped: ${excluded[v.pin.vault]}`).join(". ")}. The next vault in the ranking takes its place.
+              {skipped.map((v) => t("legs.skipped", { symbol: v.pin.symbol, reason: t(`excluded.${excluded[v.pin.vault]}`) })).join(". ")}. {t("legs.skippedNext")}
             </li>
           ) : null}
           {!lockedRanking && top.length < size ? (
-            <li className="basket-leg basket-leg-empty">
-              {rows ? `Only ${ranking.length} vaults currently qualify (open, with a realized APR and at least ${usd(BASKET_TVL_FLOOR)} in them). Pick a smaller basket.` : "Reading the vault ranking…"}
-            </li>
+            <li className="basket-leg basket-leg-empty">{rows ? t("legs.onlyQualify", { n: ranking.length, floor: usd(BASKET_TVL_FLOOR) }) : t("legs.reading")}</li>
           ) : null}
         </ol>
 
@@ -320,36 +323,34 @@ export function BasketStrategy() {
             ) : note ? (
               <p>{note}</p>
             ) : perLegTooSmall ? (
-              <p>Each vault needs at least {BASKET_MIN_PER_VAULT} USDG. Raise the amount or choose fewer vaults.</p>
+              <p>{t("foot.tooSmall", { min: BASKET_MIN_PER_VAULT })}</p>
             ) : overBalance ? (
-              <p>That is more USDG than the wallet holds.</p>
+              <p>{t("foot.overBalance")}</p>
             ) : plan ? (
-              <p>
-                {fmtUsdg(total)} USDG across {size} vaults, {size} approvals and {size} deposits to sign. Each leg is an ordinary vault position you can exit on its vault page at any time.
-              </p>
+              <p>{t("foot.plan", { total: fmtUsdg(total), size })}</p>
             ) : (
-              <p>Ranked by realized 24h fee APR among open vaults with at least {usd(BASKET_TVL_FLOOR)} in them. The ranking is read from the chain every 15 seconds{feedError ? " and is currently stale" : ""}.</p>
+              <p>{t("foot.ranked", { floor: usd(BASKET_TVL_FLOOR), stale: feedError ? t("foot.stale") : "" })}</p>
             )}
           </div>
           {!owner ? (
             <button type="button" className="hex hex-green" onClick={() => void connect()} disabled={!available}>
-              {available ? "Connect wallet" : "No wallet detected"}
+              {available ? t("foot.connect") : t("foot.noWallet")}
             </button>
           ) : legs && legs.some((l) => l.status === "failed") ? (
             <button type="button" className="hex hex-green" onClick={retry} disabled={busy}>
-              <RefreshCw size={14} aria-hidden="true" /> Retry from the failed leg
+              <RefreshCw size={14} aria-hidden="true" /> {t("foot.retry")}
             </button>
           ) : legs && legs.every((l) => l.status === "done") ? (
             <Link className="hex hex-green" href="/portfolio">
-              See it in your portfolio <ArrowRight size={14} aria-hidden="true" />
+              {t("foot.portfolio")} <ArrowRight size={14} aria-hidden="true" />
             </Link>
           ) : legs ? (
             <button type="button" className="hex hex-green" disabled>
-              <span className="managed-progress-spinner" aria-hidden="true" /> Signing…
+              <span className="managed-progress-spinner" aria-hidden="true" /> {t("foot.signing")}
             </button>
           ) : (
             <button type="button" className="hex hex-green" onClick={start} disabled={!canStart}>
-              Start the basket <ArrowRight size={14} aria-hidden="true" />
+              {t("foot.start")} <ArrowRight size={14} aria-hidden="true" />
             </button>
           )}
         </div>
@@ -358,21 +359,21 @@ export function BasketStrategy() {
       <section className="basket-panel basket-rebalance" aria-labelledby="basket-rebalance-heading">
         <div className="basket-panel-head">
           <div>
-            <p className="eyebrow">Your basket</p>
-            <h2 id="basket-rebalance-heading">Rotation is suggested, never automatic.</h2>
+            <p className="eyebrow">{t("hints.eyebrow")}</p>
+            <h2 id="basket-rebalance-heading">{t("hints.title")}</h2>
           </div>
         </div>
         {!owner ? (
-          <p className="basket-muted">Connect a wallet to compare its vault positions with the current top {size}.</p>
+          <p className="basket-muted">{t("hints.connect", { size })}</p>
         ) : !hints ? (
-          <p className="basket-muted">Reading your positions…</p>
+          <p className="basket-muted">{t("hints.reading")}</p>
         ) : hints.held.length === 0 ? (
-          <p className="basket-muted">No vault positions in this wallet yet. Start a basket above and this panel tracks it against the ranking.</p>
+          <p className="basket-muted">{t("hints.none")}</p>
         ) : (
           <div className="basket-hints">
             <div>
               <h3>
-                Held <small>{hints.held.length} vaults · {usd(hints.held.reduce((a, p) => a + p.value, 0))}</small>
+                {t("hints.held")} <small>{t("hints.heldMeta", { n: hints.held.length, value: usd(hints.held.reduce((a, p) => a + p.value, 0)) })}</small>
               </h3>
               <ul>
                 {hints.held.map((p) => {
@@ -382,42 +383,40 @@ export function BasketStrategy() {
                       <StockLogo symbol={p.pin.symbol} size={26} />
                       <span>{p.pin.symbol}</span>
                       <b className="mono">{usd(p.value)}</b>
-                      <em className={inTop ? "in" : "out"}>{inTop ? "in the top" : "left the top"}</em>
+                      <em className={inTop ? "in" : "out"}>{inTop ? t("hints.inTop") : t("hints.leftTop")}</em>
                     </li>
                   );
                 })}
               </ul>
             </div>
             <div>
-              <h3>Suggested moves</h3>
+              <h3>{t("hints.moves")}</h3>
               {hints.dropped.length === 0 && hints.missing.length === 0 ? (
-                <p className="basket-muted">Your positions match the current top {size}. Nothing to do.</p>
+                <p className="basket-muted">{t("hints.match", { size })}</p>
               ) : (
                 <ul>
                   {hints.dropped.map((p) => (
                     <li key={`out-${p.pin.vault}`}>
                       <StockLogo symbol={p.pin.symbol} size={26} />
-                      <span>{p.pin.symbol} fell out of the top {size}</span>
+                      <span>{t("hints.fellOut", { symbol: p.pin.symbol, size })}</span>
                       <Link href={p.pin.href}>
-                        Withdraw on its page <ArrowUpRight size={12} aria-hidden="true" />
+                        {t("hints.withdrawPage")} <ArrowUpRight size={12} aria-hidden="true" />
                       </Link>
                     </li>
                   ))}
                   {hints.missing.map((r) => (
                     <li key={`in-${r.pin.vault}`}>
                       <StockLogo symbol={r.pin.symbol} size={26} />
-                      <span>
-                        {r.pin.symbol} entered at {formatPercent(r.apr)}
-                      </span>
+                      <span>{t("hints.entered", { symbol: r.pin.symbol, apr: formatPercent(r.apr) })}</span>
                       <Link href={r.pin.href}>
-                        Deposit on its page <ArrowUpRight size={12} aria-hidden="true" />
+                        {t("hints.depositPage")} <ArrowUpRight size={12} aria-hidden="true" />
                       </Link>
                     </li>
                   ))}
                 </ul>
               )}
               <p className="basket-muted basket-small">
-                <Lock size={12} aria-hidden="true" /> {BRAND.name} never moves your funds. Every change is a transaction you sign.
+                <Lock size={12} aria-hidden="true" /> {t("hints.never", { brand: BRAND.name })}
               </p>
             </div>
           </div>

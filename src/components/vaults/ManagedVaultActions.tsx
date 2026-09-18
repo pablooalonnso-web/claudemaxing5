@@ -4,32 +4,28 @@ import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { decodeEventLog, formatUnits, parseUnits, type Address, type Hex } from "viem";
 import { useWallet } from "@/components/wallet/WalletProvider";
+import { useT } from "@/i18n/client";
+import type { TFunction } from "@/i18n";
 import { erc20Abi } from "@/lib/abis";
 import { BRAND } from "@/lib/brand";
 import { explorerTx, publicClient, robinhoodChain } from "@/lib/chain";
-import {
-  buildDepositQuote,
-  buildWithdrawQuote,
-  depositStatusOf,
-  describeTxError,
-  encodeApprove,
-  encodeDeposit,
-  encodeWithdraw,
-  readManagedState,
-  type ManagedLiveState,
-} from "@/lib/managed-vault";
+import { buildDepositQuote, buildWithdrawQuote, depositStatusOf, encodeApprove, encodeDeposit, encodeWithdraw, readManagedState, type ManagedLiveState } from "@/lib/managed-vault";
 import type { VaultPin } from "@/lib/registry";
+import { txErrorMessage } from "./txError";
 
 const fmt = (raw: bigint, decimals: number) => Number(formatUnits(raw, decimals)).toLocaleString(undefined, { maximumSignificantDigits: 7 });
 
-function parseAmount(value: string, decimals: number) {
-  if (!/^(?:0|[1-9][0-9]*)(?:\.[0-9]+)?$/.test(value) || (value.split(".")[1]?.length ?? 0) > decimals) throw new Error("Enter a valid amount");
+function parseAmount(value: string, decimals: number, t: TFunction) {
+  if (!/^(?:0|[1-9][0-9]*)(?:\.[0-9]+)?$/.test(value) || (value.split(".")[1]?.length ?? 0) > decimals) throw new Error(t("error.invalidAmount"));
   const raw = parseUnits(value, decimals);
-  if (raw <= 0n) throw new Error("Enter an amount above zero");
+  if (raw <= 0n) throw new Error(t("error.aboveZero"));
   return raw;
 }
 
+type TxKind = "resetApproval" | "approval" | "deposit" | "tokenWithdrawal" | "usdgWithdrawal";
+
 export function ManagedVaultActions({ pin, onState }: { pin: VaultPin; onState?: (s: ManagedLiveState | null) => void }) {
+  const t = useT("vaults");
   const entry = pin.preview;
   const { address: owner, ready, connect, walletClient, chainId, switchChain } = useWallet();
   const [state, setState] = useState<ManagedLiveState | null>(null);
@@ -39,7 +35,7 @@ export function ManagedVaultActions({ pin, onState }: { pin: VaultPin; onState?:
   const [percent, setPercent] = useState("100");
   const [toUsdg, setToUsdg] = useState(false);
   const [busy, setBusy] = useState(false);
-  const [progress, setProgress] = useState("Processing…");
+  const [progress, setProgress] = useState(() => t("tx.processing"));
   const [status, setStatus] = useState("");
   const [error, setError] = useState("");
   const [hash, setHash] = useState<Hex | null>(null);
@@ -65,12 +61,12 @@ export function ManagedVaultActions({ pin, onState }: { pin: VaultPin; onState?:
 
   useEffect(() => {
     void refresh();
-    const t = setInterval(() => {
+    const timer = setInterval(() => {
       if (document.visibilityState === "visible") void refresh();
     }, 15_000);
     const clock = setInterval(() => setNow(Date.now()), 1000);
     return () => {
-      clearInterval(t);
+      clearInterval(timer);
       clearInterval(clock);
     };
   }, [refresh]);
@@ -80,7 +76,7 @@ export function ManagedVaultActions({ pin, onState }: { pin: VaultPin; onState?:
     if (!owner || mode !== "deposit" || busy) return;
     let raw: bigint;
     try {
-      raw = parseAmount(amount, 6);
+      raw = parseAmount(amount, 6, t);
     } catch {
       setQuoteShares(null);
       return;
@@ -90,7 +86,7 @@ export function ManagedVaultActions({ pin, onState }: { pin: VaultPin; onState?:
       return;
     }
     let alive = true;
-    const t = setTimeout(async () => {
+    const timer = setTimeout(async () => {
       try {
         const q = await buildDepositQuote(entry, owner, raw, false);
         if (alive) setQuoteShares({ amount, shares: q.shares, expires: q.quotedAt + 15_000 });
@@ -100,29 +96,30 @@ export function ManagedVaultActions({ pin, onState }: { pin: VaultPin; onState?:
     }, 500);
     return () => {
       alive = false;
-      clearTimeout(t);
+      clearTimeout(timer);
     };
-  }, [amount, owner, mode, busy, entry, usdgBalance]);
+  }, [amount, owner, mode, busy, entry, usdgBalance, t]);
 
   const ensureNetwork = async () => {
     if (chainId !== robinhoodChain.id) await switchChain();
   };
 
-  async function send(to: Address, data: Hex, label: string) {
-    if (!walletClient || !owner) throw new Error("Connect your wallet");
+  async function send(to: Address, data: Hex, kind: TxKind) {
+    if (!walletClient || !owner) throw new Error(t("error.connect"));
+    const label = t(`tx.label.${kind}`);
     const client = publicClient();
-    setProgress(`Preparing ${label}…`);
+    setProgress(t("tx.preparing", { label }));
     await client.call({ account: owner, to, data });
     const gas = await client.estimateGas({ account: owner, to, data });
-    setStatus(`Confirm ${label} in your wallet.`);
-    setProgress(label === "approval" ? "Approve tokens in wallet" : label === "deposit" ? "Confirm deposit in wallet" : "Confirm withdrawal in wallet");
+    setStatus(t("tx.confirmInWallet", { label }));
+    setProgress(kind === "approval" ? t("tx.approveInWallet") : kind === "deposit" ? t("tx.confirmDeposit") : t("tx.confirmWithdraw"));
     const tx = await walletClient.sendTransaction({ account: owner, chain: robinhoodChain, to, data, value: 0n, gas: (gas * 120n) / 100n });
     setHash(tx);
-    setStatus("Waiting for confirmation…");
-    setProgress(label === "approval" ? "Approving tokens…" : label === "deposit" ? "Depositing…" : "Withdrawing…");
+    setStatus(t("tx.waiting"));
+    setProgress(kind === "approval" ? t("tx.approving") : kind === "deposit" ? t("tx.depositing") : t("tx.withdrawing"));
     const receipt = await client.waitForTransactionReceipt({ hash: tx, timeout: 120_000, pollingInterval: 1000 });
-    if (receipt.status !== "success") throw new Error("Transaction reverted; no change was completed.");
-    setStatus(`${label} confirmed.`);
+    if (receipt.status !== "success") throw new Error(t("error.reverted"));
+    setStatus(t("tx.confirmed", { label }));
     return receipt;
   }
 
@@ -130,7 +127,7 @@ export function ManagedVaultActions({ pin, onState }: { pin: VaultPin; onState?:
     if (!owner) return;
     const current = await publicClient().readContract({ address: token, abi: erc20Abi, functionName: "allowance", args: [owner, spender] });
     if (current >= needed) return;
-    if (current > 0n) await send(token, encodeApprove(spender, 0n), "reset approval");
+    if (current > 0n) await send(token, encodeApprove(spender, 0n), "resetApproval");
     await send(token, encodeApprove(spender, needed), "approval");
   }
 
@@ -141,17 +138,17 @@ export function ManagedVaultActions({ pin, onState }: { pin: VaultPin; onState?:
     setError("");
     setHash(null);
     setReceived(null);
-    setStatus("Checking your wallet and vault…");
+    setStatus(t("tx.checkingWallet"));
     try {
       await ensureNetwork();
       if (action === "deposit") {
-        const raw = parseAmount(amount, 6);
-        setStatus("Checking the deposit…");
+        const raw = parseAmount(amount, 6, t);
+        setStatus(t("tx.checkingDeposit"));
         await ensureAllowance(entry.asset as Address, entry.router as Address, raw);
-        setProgress("Preparing deposit…");
+        setProgress(t("tx.preparingDeposit"));
         const quote = await buildDepositQuote(entry, owner, raw, true);
         setQuoteShares({ amount, shares: quote.shares, expires: quote.expires });
-        if (Date.now() > quote.expires - 15_000) throw new Error("Quote expired. Please try again.");
+        if (Date.now() > quote.expires - 15_000) throw new Error(t("error.quoteExpired"));
         const receipt = await send(entry.router as Address, encodeDeposit(quote.entry), "deposit");
         let minted = 0n;
         for (const log of receipt.logs) {
@@ -164,27 +161,27 @@ export function ManagedVaultActions({ pin, onState }: { pin: VaultPin; onState?:
         if (minted > 0n) setReceived(minted);
         setAmount("");
       } else {
-        if (!state) throw new Error("Vault state is still loading");
-        if (!/^\d+(?:\.\d{1,2})?$/.test(percent)) throw new Error("Enter a percentage from 0.01 to 100");
+        if (!state) throw new Error(t("error.stateLoading"));
+        if (!/^\d+(?:\.\d{1,2})?$/.test(percent)) throw new Error(t("error.percentRange"));
         const bps = parseUnits(percent, 2);
-        if (bps <= 0n || bps > 10_000n) throw new Error("Enter a percentage from 0.01 to 100");
+        if (bps <= 0n || bps > 10_000n) throw new Error(t("error.percentRange"));
         const shares = (state.balance * bps) / 10_000n;
-        if (shares === 0n) throw new Error("No shares selected");
+        if (shares === 0n) throw new Error(t("error.noShares"));
         if (toUsdg) await ensureAllowance(entry.vault as Address, entry.router as Address, shares);
-        setStatus("Checking your withdrawal…");
-        setProgress("Preparing withdrawal…");
+        setStatus(t("tx.checkingWithdrawal"));
+        setProgress(t("tx.preparingWithdrawal"));
         const quote = await buildWithdrawQuote(entry, owner, shares, toUsdg);
-        if (Date.now() > quote.expires - 15_000) throw new Error("Quote expired. Please try again.");
-        await send(quote.kind === "tokens" ? (entry.vault as Address) : (entry.router as Address), encodeWithdraw(quote), quote.kind === "tokens" ? "token withdrawal" : "USDG withdrawal");
+        if (Date.now() > quote.expires - 15_000) throw new Error(t("error.quoteExpired"));
+        await send(quote.kind === "tokens" ? (entry.vault as Address) : (entry.router as Address), encodeWithdraw(quote), quote.kind === "tokens" ? "tokenWithdrawal" : "usdgWithdrawal");
       }
-      setStatus("Transaction confirmed. Updating your position…");
-      setProgress("Updating balance…");
+      setStatus(t("tx.confirmedUpdating"));
+      setProgress(t("tx.updatingBalance"));
       window.dispatchEvent(new Event(BRAND.vaultUpdatedEvent));
       await refresh();
-      setStatus("Transaction complete. Your position is updated.");
+      setStatus(t("tx.complete"));
     } catch (e) {
       setStatus("");
-      setError(describeTxError(e));
+      setError(txErrorMessage(e, t));
     } finally {
       busyRef.current = false;
       setBusy(false);
@@ -207,39 +204,39 @@ export function ManagedVaultActions({ pin, onState }: { pin: VaultPin; onState?:
       <section className="wallet-vault-actions managed-vault-actions">
         {owner && shares !== null && shares !== 0n ? (
           <div className="earn-account-summary">
-            <p className="eyebrow">Your vault position</p>
+            <p className="eyebrow">{t("actions.positionEyebrow")}</p>
             <strong>
               {positionValue === null ? "–" : positionValue.toLocaleString(undefined, { style: "currency", currency: "USD", maximumFractionDigits: 2 })}
               <small>USDG</small>
             </strong>
             <div className="earn-account-summary-meta">
-              <span>{fmt(shares, 18)} shares</span>
-              <Link href="/portfolio">Portfolio ↗</Link>
+              <span>{t("actions.shares", { n: fmt(shares, 18) })}</span>
+              <Link href="/portfolio">{t("actions.portfolio")}</Link>
             </div>
           </div>
         ) : (
           <div className="single-vault-wallet-intro">
-            <h2>Make your first deposit</h2>
-            <p>{owner ? "You don’t have a position in this vault yet." : "Connect your wallet to deposit or view your position."}</p>
+            <h2>{t("actions.firstDeposit")}</h2>
+            <p>{owner ? t("actions.noPosition") : t("actions.connectIntro")}</p>
           </div>
         )}
-        <div className="tabs vault-action-tabs" role="tablist" aria-label="Vault action">
+        <div className="tabs vault-action-tabs" role="tablist" aria-label={t("actions.tabsAria")}>
           <button type="button" role="tab" disabled={busy} aria-selected={mode === "deposit"} aria-pressed={mode === "deposit"} className={mode === "deposit" ? "active" : ""} onClick={() => setMode("deposit")}>
-            Deposit
+            {t("actions.deposit")}
           </button>
           <button type="button" role="tab" disabled={busy} aria-selected={mode === "withdraw"} aria-pressed={mode === "withdraw"} className={mode === "withdraw" ? "active" : ""} onClick={() => setMode("withdraw")}>
-            Withdraw
+            {t("actions.withdraw")}
           </button>
         </div>
         {mode === "deposit" ? (
           <>
             <label className="amount-box amount-box-input" htmlFor="managed-amount">
               <div className="amount-box-top">
-                <span>You deposit</span>
+                <span>{t("actions.youDeposit")}</span>
                 <span>
-                  Balance <b className="mono">{usdgBalance === null ? "–" : fmt(usdgBalance, 6)}</b> ·{" "}
+                  {t("actions.balance")} <b className="mono">{usdgBalance === null ? "–" : fmt(usdgBalance, 6)}</b> ·{" "}
                   <button type="button" className="max-link" disabled={usdgBalance === null || busy} onClick={() => usdgBalance !== null && setAmount(formatUnits(usdgBalance, 6))}>
-                    Max
+                    {t("actions.max")}
                   </button>
                 </span>
               </div>
@@ -249,28 +246,25 @@ export function ManagedVaultActions({ pin, onState }: { pin: VaultPin; onState?:
               </div>
             </label>
             <div className="wallet-quote-row" aria-live="polite">
-              <span>{received !== null && !amount ? "You received" : "You receive"}</span>
-              <strong
-                className="mono"
-                title={received !== null && !amount ? "Confirmed shares from your transaction" : liveQuote !== null ? "Estimated shares from your deposit quote" : "The share amount appears once your deposit quote is ready"}
-              >
-                {received !== null && !amount ? fmt(received, 18) : liveQuote !== null ? `≈ ${fmt(liveQuote, 18)}` : "–"} vault shares
+              <span>{received !== null && !amount ? t("actions.youReceived") : t("actions.youReceive")}</span>
+              <strong className="mono" title={received !== null && !amount ? t("actions.titleConfirmed") : liveQuote !== null ? t("actions.titleEstimated") : t("actions.titlePending")}>
+                {t("actions.vaultSharesValue", { value: received !== null && !amount ? fmt(received, 18) : liveQuote !== null ? `≈ ${fmt(liveQuote, 18)}` : "–" })}
               </strong>
             </div>
-            {deposit.blocked ? <p className="wallet-guard-note">Deposits are currently unavailable for this vault.</p> : null}
+            {deposit.blocked ? <p className="wallet-guard-note">{t("actions.depositsUnavailable")}</p> : null}
             {owner ? (
               <button className="btn btn-primary managed-submit" disabled={busy || deposit.blocked} aria-busy={busy} aria-live="polite" onClick={() => void run("deposit")}>
-                {busy ? submitLabel : deposit.blocked ? "Deposits paused" : "Deposit"}
+                {busy ? submitLabel : deposit.blocked ? t("actions.depositsPaused") : t("actions.deposit")}
               </button>
             ) : (
               <button className="btn btn-primary managed-submit" disabled={!ready} onClick={() => void connect()}>
-                Connect wallet
+                {t("actions.connect")}
               </button>
             )}
           </>
         ) : (
           <>
-            <label htmlFor="managed-percent">Portion to withdraw</label>
+            <label htmlFor="managed-percent">{t("actions.portion")}</label>
             <div className="managed-input">
               <input id="managed-percent" inputMode="decimal" value={percent} onChange={(e) => setPercent(e.target.value)} />
               <span>%</span>
@@ -278,27 +272,27 @@ export function ManagedVaultActions({ pin, onState }: { pin: VaultPin; onState?:
             <div className="managed-presets">
               {[25, 50, 75, 100].map((p) => (
                 <button key={p} onClick={() => setPercent(String(p))}>
-                  {p === 100 ? "Max" : `${p}%`}
+                  {p === 100 ? t("actions.max") : `${p}%`}
                 </button>
               ))}
             </div>
             {!state?.recovery ? (
               <>
-                <label htmlFor="managed-receive">Receive</label>
+                <label htmlFor="managed-receive">{t("actions.receive")}</label>
                 <select id="managed-receive" value={toUsdg ? "usdg" : "tokens"} onChange={(e) => setToUsdg(e.target.value === "usdg")}>
-                  <option value="tokens">{state?.symbols.join(" + ") ?? "Pool tokens"}</option>
-                  <option value="usdg">USDG · includes a swap</option>
+                  <option value="tokens">{state?.symbols.join(" + ") ?? t("actions.poolTokens")}</option>
+                  <option value="usdg">{t("actions.usdgSwap")}</option>
                 </select>
-                <p>{toUsdg ? "Converted in your transaction when a safe quote is available." : "Your share of both tokens, directly to your wallet."}</p>
+                <p>{toUsdg ? t("actions.convertedNote") : t("actions.tokensNote")}</p>
               </>
             ) : null}
             {owner ? (
               <button className="btn btn-primary managed-submit" disabled={busy || !state?.balance || state.cases.every(Boolean)} aria-busy={busy} aria-live="polite" onClick={() => void run("withdraw")}>
-                {busy ? submitLabel : "Withdraw"}
+                {busy ? submitLabel : t("actions.withdraw")}
               </button>
             ) : (
               <button className="btn btn-primary managed-submit" disabled={!ready} onClick={() => void connect()}>
-                Connect wallet
+                {t("actions.connect")}
               </button>
             )}
           </>
@@ -312,7 +306,7 @@ export function ManagedVaultActions({ pin, onState }: { pin: VaultPin; onState?:
             ) : null}
             {hash ? (
               <a href={explorerTx(hash)} target="_blank" rel="noreferrer">
-                View transaction ↗
+                {t("actions.viewTx")}
               </a>
             ) : null}
             {error ? (
@@ -323,22 +317,18 @@ export function ManagedVaultActions({ pin, onState }: { pin: VaultPin; onState?:
           </div>
         ) : null}
         {mode === "deposit" ? (
-          <aside className="managed-refund-note" aria-label="About deposit amounts">
+          <aside className="managed-refund-note" aria-label={t("actions.refundAria")}>
             <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" aria-hidden="true">
               <circle cx="12" cy="12" r="9" />
               <path d="M12 11v5" />
               <path d="M12 7.5h.01" />
             </svg>
-            <p>
-              Only the amount needed for the position is invested. Unused USDG and any leftover stock tokens return to your wallet in the same
-              transaction. Your vault value can therefore be lower than the amount entered. For example, $97 invested from a $100 deposit. Refund
-              amounts vary; swap fees, price impact and price changes also affect value.
-            </p>
+            <p>{t("actions.refundNote")}</p>
           </aside>
         ) : null}
         <details>
-          <summary>How it works</summary>
-          <p>Your deposit adds liquidity in your transaction. Withdrawals remove your share in your transaction. The keeper manages the range. Prices and fees can change; returns are not guaranteed.</p>
+          <summary>{t("actions.how")}</summary>
+          <p>{t("actions.howBody")}</p>
         </details>
       </section>
     </div>

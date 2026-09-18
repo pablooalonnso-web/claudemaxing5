@@ -1,6 +1,7 @@
 "use client";
 
 import { memo, useMemo, useState } from "react";
+import { useT } from "@/i18n/client";
 import { formatPrice } from "@/lib/format";
 
 export type PricePoint = { date: string; price: number };
@@ -53,13 +54,14 @@ export const RangeChart = memo(function RangeChart({
   height?: number;
   unavailable?: boolean;
 }) {
+  const t = useT("vaults");
   const [hover, setHover] = useState<number | null>(null);
   const chart = useMemo(() => buildRangeChart(points, lower, upper, current, height), [points, lower, upper, current, height]);
   if (!chart) {
     return (
       <div className="range-chart-empty" role="status">
-        <strong>Price history is building.</strong>
-        <span>The chart draws once at least two recorded price observations exist for this pool. The current range and pool price are shown below.</span>
+        <strong>{t("chart.buildingTitle")}</strong>
+        <span>{t("chart.buildingBody")}</span>
       </div>
     );
   }
@@ -86,7 +88,7 @@ export const RangeChart = memo(function RangeChart({
         className="range-chart-plot"
         tabIndex={0}
         role="group"
-        aria-label={`${symbol} price history. Hover or tap for price and time. Use left and right arrow keys to explore observations.`}
+        aria-label={t("chart.plotAria", { symbol })}
         onPointerMove={track}
         onPointerDown={track}
         onPointerLeave={(e) => {
@@ -109,7 +111,7 @@ export const RangeChart = memo(function RangeChart({
           viewBox={`0 0 ${W} ${height}`}
           preserveAspectRatio="none"
           role="img"
-          aria-label={`${symbol} DEX price across ${points.length} observations${hasBand && lower !== null && upper !== null ? `, LP range ${formatPrice(lower)} to ${formatPrice(upper)}` : ""}`}
+          aria-label={`${t("chart.imgAria", { symbol, n: points.length })}${hasBand && lower !== null && upper !== null ? t("chart.imgAriaRange", { lower: formatPrice(lower), upper: formatPrice(upper) }) : ""}`}
         >
           {[0.25, 0.5, 0.75].map((f) => (
             <line key={f} className="range-chart-grid" x1="0" x2={W} y1={(height * f).toFixed(1)} y2={(height * f).toFixed(1)} />
@@ -136,7 +138,7 @@ export const RangeChart = memo(function RangeChart({
             <strong>
               {formatPrice(point.price)} <span>USDG</span>
             </strong>
-            <small>{point.date.includes("T") ? "Recorded pool price" : "Daily close"}</small>
+            <small>{point.date.includes("T") ? t("chart.recorded") : t("chart.dailyClose")}</small>
           </div>
         ) : null}
       </div>
@@ -145,12 +147,12 @@ export const RangeChart = memo(function RangeChart({
         <span className="range-chart-legend">
           {hasBand && lower !== null && upper !== null ? (
             <>
-              <i /> LP range {formatPrice(lower)} – {formatPrice(upper)}
+              <i /> {t("chart.legendRange", { lower: formatPrice(lower), upper: formatPrice(upper) })}
             </>
           ) : unavailable ? (
-            "Range data unavailable"
+            t("chart.unavailable")
           ) : (
-            "No active LP range"
+            t("chart.noRange")
           )}
         </span>
         <span suppressHydrationWarning>{edgeLabel(points[points.length - 1]?.date)}</span>

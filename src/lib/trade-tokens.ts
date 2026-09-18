@@ -13,6 +13,10 @@ export type TradeToken = {
   category: "core" | "stock" | "imported";
   logoUrl?: string;
   native?: boolean;
+  /** Message key in the `trade` namespace for the translated display name. Components resolve it with t(); `name` stays the English fallback (search, other callers). */
+  nameKey?: "token.ether" | "token.globalDollar" | "token.brand" | "token.stock";
+  /** `{name}` placeholder for `nameKey` (the company name for a Stock Token). */
+  baseName?: string;
 };
 
 function stockTokens(): TradeToken[] {
@@ -20,14 +24,15 @@ function stockTokens(): TradeToken[] {
     const entry = MANAGED_VAULTS.find((m) => m.id === pin.id);
     if (!entry) return [];
     const address = entry.token0.toLowerCase() === USDG_ADDRESS.toLowerCase() ? entry.token1 : entry.token0;
-    return [{ address, symbol: pin.symbol, name: `${STOCK_NAMES.find((s) => s.symbol === pin.symbol)?.name ?? pin.symbol} Stock Token`, decimals: 18, category: "stock" as const, logoUrl: `/stock-tokens/${pin.symbol.toLowerCase()}.png` }];
+    const baseName = STOCK_NAMES.find((s) => s.symbol === pin.symbol)?.name ?? pin.symbol;
+    return [{ address, symbol: pin.symbol, name: `${baseName} Stock Token`, nameKey: "token.stock" as const, baseName, decimals: 18, category: "stock" as const, logoUrl: `/stock-tokens/${pin.symbol.toLowerCase()}.png` }];
   });
 }
 
 export const TRADE_TOKENS: TradeToken[] = [
-  { address: NATIVE_ETH, symbol: "ETH", name: "Ether", decimals: 18, category: "core", logoUrl: "/brands/eth.svg", native: true },
-  { address: USDG_ADDRESS, symbol: "USDG", name: "Global Dollar", decimals: 6, category: "core", logoUrl: "/brands/usdg.png" },
-  { address: TOKEN_ADDRESS, symbol: BRAND.token, name: `${BRAND.name} token`, decimals: 18, category: "core", logoUrl: "/icon.svg" },
+  { address: NATIVE_ETH, symbol: "ETH", name: "Ether", nameKey: "token.ether", decimals: 18, category: "core", logoUrl: "/brands/eth.svg", native: true },
+  { address: USDG_ADDRESS, symbol: "USDG", name: "Global Dollar", nameKey: "token.globalDollar", decimals: 6, category: "core", logoUrl: "/brands/usdg.png" },
+  { address: TOKEN_ADDRESS, symbol: BRAND.token, name: `${BRAND.name} token`, nameKey: "token.brand", decimals: 18, category: "core", logoUrl: "/icon.svg" },
   ...stockTokens(),
 ];
 

@@ -2,14 +2,16 @@ import type { Metadata } from "next";
 import { SiteFooter } from "@/components/SiteFooter";
 import { SiteHeader } from "@/components/SiteHeader";
 import { EarningsCalculator } from "@/components/calculator/EarningsCalculator";
+import { getT } from "@/i18n/server";
 import { BRAND } from "@/lib/brand";
 
-export const metadata: Metadata = {
-  title: `Fee calculator · ${BRAND.name}`,
-  description: "What a USDG amount would have earned in each vault at the observed fee rate. Past pool fees read from the chain, not a forecast.",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getT("calculator");
+  return { title: `${t("meta.title")} · ${BRAND.name}`, description: t("meta.description") };
+}
 
-export default function CalculatorPage() {
+export default async function CalculatorPage() {
+  const t = await getT("calculator");
   return (
     <main className="app-page">
       <SiteHeader />
@@ -17,15 +19,13 @@ export default function CalculatorPage() {
         <div className="masthead-inner">
           <div className="masthead-head">
             <div className="masthead-title">
-              <p className="eyebrow">Fee calculator</p>
+              <p className="eyebrow">{t("page.eyebrow")}</p>
               <h1>
-                What would you <em className="serif">have earned?</em>
+                {t("page.title.before")}
+                <em className="serif">{t("page.title.em")}</em>
               </h1>
             </div>
-            <p className="masthead-intro">
-              Pick an amount and a vault. The calculator applies the fee rate the vault actually earned over its observed window, and shows the vault&apos;s
-              lifetime fees for scale. It looks backwards on purpose.
-            </p>
+            <p className="masthead-intro">{t("page.intro")}</p>
           </div>
         </div>
       </section>

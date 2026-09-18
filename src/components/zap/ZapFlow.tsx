@@ -7,12 +7,15 @@ import { ArrowRight, ArrowUpRight, Check, CircleAlert, RefreshCw } from "lucide-
 import { useProtocolVaults } from "@/components/data/ProtocolVaultProvider";
 import { StockLogo } from "@/components/StockLogo";
 import { useWallet } from "@/components/wallet/WalletProvider";
+import { txErrorMessage } from "@/components/vaults/txError";
+import { useT } from "@/i18n/client";
+import type { TFunction } from "@/i18n";
 import { erc20Abi } from "@/lib/abis";
 import { BASKET_TVL_FLOOR, rankVaults } from "@/lib/basket";
 import { BRAND } from "@/lib/brand";
 import { explorerTx, publicClient, robinhoodChain, USDG_ADDRESS } from "@/lib/chain";
 import { formatPercent } from "@/lib/format";
-import { buildDepositQuote, describeTxError, encodeApprove, encodeDeposit } from "@/lib/managed-vault";
+import { buildDepositQuote, encodeApprove, encodeDeposit } from "@/lib/managed-vault";
 import type { VaultPin } from "@/lib/registry";
 import { TRADE_TOKENS, type TradeToken, type TradeQuote } from "@/lib/trade-tokens";
 
@@ -25,10 +28,10 @@ const amt = (raw: bigint, dec: number, sig = 6) => Number(formatUnits(raw, dec))
 const SOURCES = TRADE_TOKENS.filter((t) => t.symbol !== BRAND.token);
 const MIN_USDG = parseUnits("10", 6);
 
-function parseAmount(v: string, decimals: number) {
-  if (!/^(?:0|[1-9][0-9]*)(?:\.[0-9]+)?$/.test(v) || (v.split(".")[1]?.length ?? 0) > decimals) throw new Error("Enter a valid amount");
+function parseAmount(v: string, decimals: number, t: TFunction) {
+  if (!/^(?:0|[1-9][0-9]*)(?:\.[0-9]+)?$/.test(v) || (v.split(".")[1]?.length ?? 0) > decimals) throw new Error(t("error.invalidAmount"));
   const raw = parseUnits(v, decimals);
-  if (raw <= 0n) throw new Error("Enter an amount above zero");
+  if (raw <= 0n) throw new Error(t("error.aboveZero"));
   return raw;
 }
 
@@ -41,6 +44,7 @@ function previewClient(owner: Address, usdg: bigint): PublicClient {
 }
 
 export function ZapFlow() {
+  const t = useT("zap");
   const { rows, singles } = useProtocolVaults();
   const { address: owner, connect, available, walletClient, chainId, switchChain } = useWallet();
   const [source, setSource] = useState<TradeToken>(SOURCES[0]);
@@ -77,13 +81,13 @@ export function ZapFlow() {
   // Step 1 of the preview: how much USDG the swap returns.
   let raw: bigint | null = null;
   try {
-    raw = parseAmount(amount, source.decimals);
+    raw = parseAmount(amount, source.decimals, t);
   } catch {}
   useEffect(() => {
     if (!raw || steps) return void setSwapQuote(null);
     if (isUsdg) return void setSwapQuote({ usdgOut: raw, quote: { providerId: "none", providerName: "", amountOutRaw: raw.toString(), netAmountOutRaw: raw.toString(), gasEstimate: "0", executable: true } });
     let alive = true;
-    const t = setTimeout(async () => {
+    const timer = setTimeout(async () => {
       try {
         const res = await fetch(`/api/trade/quotes?${new URLSearchParams({ tokenIn: source.address, tokenOut: USDG_ADDRESS, amountIn: raw!.toString() })}`, { cache: "no-store" });
         const json = (await res.json()) as { data?: { quotes: TradeQuote[] } };
@@ -95,7 +99,7 @@ export function ZapFlow() {
     }, 500);
     return () => {
       alive = false;
-      clearTimeout(t);
+      clearTimeout(timer);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [raw?.toString(), source.address, isUsdg, steps]);
@@ -105,7 +109,7 @@ export function ZapFlow() {
     if (!owner || !vault || !swapQuote || swapQuote === "none" || steps) return void setShares(null);
     if (swapQuote.usdgOut < MIN_USDG) return void setShares("none");
     let alive = true;
-    const t = setTimeout(async () => {
+    const timer = setTimeout(async () => {
       try {
         const q = await buildDepositQuote(vault.preview, owner, swapQuote.usdgOut, false, previewClient(owner, swapQuote.usdgOut * 2n));
         if (alive) setShares(q.shares);
@@ -115,19 +119,19 @@ export function ZapFlow() {
     }, 300);
     return () => {
       alive = false;
-      clearTimeout(t);
+      clearTimeout(timer);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [owner, vault?.vault, swapQuote === "none" ? "none" : swapQuote?.usdgOut.toString(), steps]);
 
   async function send(to: Address, data: Hex, value = 0n) {
-    if (!walletClient || !owner) throw new Error("Connect your wallet");
+    if (!walletClient || !owner) throw new Error(t("error.connect"));
     const client = publicClient();
     await client.call({ account: owner, to, data, value });
     const gas = await client.estimateGas({ account: owner, to, data, value });
     const tx = await walletClient.sendTransaction({ account: owner, chain: robinhoodChain, to, data, value, gas: (gas * 125n + 99n) / 100n });
     const receipt = await client.waitForTransactionReceipt({ hash: tx, timeout: 120_000, pollingInterval: 1000 });
-    if (receipt.status !== "success") throw new Error("Transaction reverted; nothing changed.");
+    if (receipt.status !== "success") throw new Error(t("error.reverted"));
     return { tx, receipt };
   }
   const setStep = (id: StepId, patch: Partial<Step>) => setSteps((s) => (s ? s.map((x) => (x.id === id ? { ...x, ...patch } : x)) : s));
@@ -150,10 +154,10 @@ export function ZapFlow() {
               continue;
             }
             setStep(id, { status: "active" });
-            setNote(`Approve ${source.symbol} for the aggregator in your wallet`);
+            setNote(t("note.approveIn", { symbol: source.symbol }));
             const res = await fetch("/api/trade/build", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ routeSummary: swapQuote.quote.routeSummary, sender: owner, recipient: owner, slippageBps: 50 }) });
             const json = (await res.json()) as { data?: { routerAddress: Address } };
-            if (!res.ok || !json.data) throw new Error("The swap could not be prepared.");
+            if (!res.ok || !json.data) throw new Error(t("error.swapPrepare"));
             const allowance = await client.readContract({ address: source.address as Address, abi: erc20Abi, functionName: "allowance", args: [owner, json.data.routerAddress] });
             if (allowance < raw) await send(source.address as Address, encodeApprove(json.data.routerAddress, raw));
             setStep(id, { status: "done" });
@@ -163,11 +167,11 @@ export function ZapFlow() {
               continue;
             }
             setStep(id, { status: "active" });
-            setNote("Building the swap…");
+            setNote(t("note.buildingSwap"));
             const res = await fetch("/api/trade/build", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ routeSummary: swapQuote.quote.routeSummary, sender: owner, recipient: owner, slippageBps: 50 }) });
             const json = (await res.json()) as { data?: { data: Hex; routerAddress: Address; amountOut: string }; error?: string };
-            if (!res.ok || !json.data) throw new Error(json.error || "The swap could not be prepared.");
-            setNote(`Confirm the ${source.symbol} → USDG swap in your wallet`);
+            if (!res.ok || !json.data) throw new Error(json.error || t("error.swapPrepare"));
+            setNote(t("note.confirmSwap", { symbol: source.symbol }));
             const { tx, receipt } = await send(json.data.routerAddress, json.data.data, source.native ? raw : 0n);
             let got = 0n;
             for (const log of receipt.logs) {
@@ -183,35 +187,35 @@ export function ZapFlow() {
             setStep(id, { status: "active" });
             const allowance = await client.readContract({ address: USDG_ADDRESS, abi: erc20Abi, functionName: "allowance", args: [owner, vault.preview.router as Address] });
             if (allowance < usdgBudget) {
-              setNote(`Approve ${amt(usdgBudget, 6)} USDG for the ${vault.symbol} vault router`);
+              setNote(t("note.approveUsdg", { amount: amt(usdgBudget, 6), vault: vault.symbol }));
               if (allowance > 0n) await send(USDG_ADDRESS, encodeApprove(vault.preview.router as Address, 0n));
               await send(USDG_ADDRESS, encodeApprove(vault.preview.router as Address, usdgBudget));
             }
             setStep(id, { status: "done" });
           } else {
             setStep(id, { status: "active" });
-            setNote(`Building the ${vault.symbol} deposit…`);
+            setNote(t("note.buildingDeposit", { vault: vault.symbol }));
             const bal = await client.readContract({ address: USDG_ADDRESS, abi: erc20Abi, functionName: "balanceOf", args: [owner] });
             const budget = usdgBudget > bal ? bal : usdgBudget;
             const quote = await buildDepositQuote(vault.preview, owner, budget, true);
-            if (Date.now() > quote.expires - 15_000) throw new Error("Quote expired. Retry the deposit.");
-            setNote("Confirm the deposit in your wallet");
+            if (Date.now() > quote.expires - 15_000) throw new Error(t("error.quoteExpired"));
+            setNote(t("note.confirmDeposit"));
             const { tx } = await send(vault.preview.router as Address, encodeDeposit(quote.entry));
             setStep(id, { status: "done", hash: tx });
             setReceived(quote.shares);
             window.dispatchEvent(new Event(BRAND.vaultUpdatedEvent));
           }
         } catch (e) {
-          setStep(id, { status: "failed", error: describeTxError(e) });
+          setStep(id, { status: "failed", error: txErrorMessage(e, t) });
           for (const rest of order.slice(order.indexOf(id) + 1)) setStep(rest, { status: "pending" });
           setNote("");
-          setError(`${labelOf(id)} did not complete. Retry from this step; finished steps stay.`);
+          setError(t("error.stepFailed", { step: labelOf(id) }));
           return;
         }
       }
-      setNote(`Done. ${source.symbol} became a ${vault.symbol} vault position.`);
+      setNote(t("note.done", { symbol: source.symbol, vault: vault.symbol }));
     } catch (e) {
-      setError(describeTxError(e));
+      setError(txErrorMessage(e, t));
     } finally {
       busyRef.current = false;
       setBusy(false);
@@ -219,7 +223,7 @@ export function ZapFlow() {
   }
 
   function labelOf(id: StepId) {
-    return id === "approveIn" ? `Approve ${source.symbol}` : id === "swap" ? `Swap ${source.symbol} to USDG` : id === "approveUsdg" ? "Approve USDG" : `Deposit into ${vault?.symbol ?? "the vault"}`;
+    return id === "approveIn" ? t("step.approveIn", { symbol: source.symbol }) : id === "swap" ? t("step.swap", { symbol: source.symbol }) : id === "approveUsdg" ? t("step.approveUsdg") : t("step.deposit", { vault: vault?.symbol ?? t("step.theVault") });
   }
   function start() {
     const ids: StepId[] = ["approveIn", "swap", "approveUsdg", "deposit"];
@@ -250,25 +254,25 @@ export function ZapFlow() {
       <section className="basket-panel" aria-labelledby="zap-heading">
         <div className="basket-panel-head">
           <div>
-            <p className="eyebrow">Zap</p>
-            <h2 id="zap-heading">From any token into a vault.</h2>
+            <p className="eyebrow">{t("flow.eyebrow")}</p>
+            <h2 id="zap-heading">{t("flow.title")}</h2>
           </div>
           <span className="strategy-status strategy-status-live">
-            <i aria-hidden="true" /> Live · you sign each step
+            <i aria-hidden="true" /> {t("flow.live")}
           </span>
         </div>
         <div className="zap-grid">
           <label className="amount-box amount-box-input" htmlFor="zap-amount">
             <div className="amount-box-top">
-              <span>You pay</span>
+              <span>{t("flow.youPay")}</span>
               <span>
-                Balance <b className="mono">{balance === null ? "–" : amt(balance, source.decimals)}</b>
+                {t("flow.balance")} <b className="mono">{balance === null ? "–" : amt(balance, source.decimals)}</b>
                 {balance !== null && !source.native ? (
                   <>
                     {" "}
                     ·{" "}
                     <button type="button" className="max-link" disabled={busy || !!steps} onClick={() => setAmount(formatUnits(balance, source.decimals))}>
-                      Max
+                      {t("flow.max")}
                     </button>
                   </>
                 ) : null}
@@ -276,7 +280,7 @@ export function ZapFlow() {
             </div>
             <div className="wallet-amount-main">
               <input id="zap-amount" inputMode="decimal" placeholder="0.00" disabled={busy || !!steps} value={amount} onChange={(e) => setAmount(e.target.value)} />
-              <select className="zap-select" aria-label="Token you pay with" value={source.address} disabled={busy || !!steps} onChange={(e) => setSource(SOURCES.find((t) => t.address === e.target.value) ?? SOURCES[0])}>
+              <select className="zap-select" aria-label={t("flow.sourceAria")} value={source.address} disabled={busy || !!steps} onChange={(e) => setSource(SOURCES.find((t) => t.address === e.target.value) ?? SOURCES[0])}>
                 {SOURCES.map((t) => (
                   <option key={t.address} value={t.address}>
                     {t.symbol}
@@ -286,76 +290,76 @@ export function ZapFlow() {
             </div>
           </label>
           <div className="zap-target">
-            <span>Into</span>
-            <select className="zap-select zap-select-vault" aria-label="Vault" value={vault?.id ?? ""} disabled={busy || !!steps} onChange={(e) => setVaultId(e.target.value)}>
+            <span>{t("flow.into")}</span>
+            <select className="zap-select zap-select-vault" aria-label={t("flow.vaultAria")} value={vault?.id ?? ""} disabled={busy || !!steps} onChange={(e) => setVaultId(e.target.value)}>
               {vaults.map((v) => {
                 const r = ranking.find((x) => x.pin.vault === v.vault);
                 return (
                   <option key={v.id} value={v.id}>
-                    {v.symbol} vault{r ? ` · ${formatPercent(r.apr)} fee APR` : ""}
+                    {r ? t("flow.vaultOptionApr", { symbol: v.symbol, apr: formatPercent(r.apr) }) : t("flow.vaultOption", { symbol: v.symbol })}
                   </option>
                 );
               })}
             </select>
             {vault ? (
               <Link href={vault.href} className="zap-vault-link">
-                <StockLogo symbol={vault.symbol} size={22} /> {rank ? `${usd(rank.tvl)} in vault` : "Vault page"} <ArrowUpRight size={12} aria-hidden="true" />
+                <StockLogo symbol={vault.symbol} size={22} /> {rank ? t("flow.inVault", { tvl: usd(rank.tvl) }) : t("flow.vaultPage")} <ArrowUpRight size={12} aria-hidden="true" />
               </Link>
             ) : null}
           </div>
         </div>
 
-        <ol className="zap-route" aria-label="Route">
+        <ol className="zap-route" aria-label={t("route.aria")}>
           <li>
             <b>{raw ? `${amt(raw, source.decimals)} ${source.symbol}` : `0 ${source.symbol}`}</b>
-            <span>you pay</span>
+            <span>{t("route.youPay")}</span>
           </li>
           <li className="zap-arrow" aria-hidden="true">
             <ArrowRight size={16} />
           </li>
           <li>
-            <b>{swapQuote === "none" ? "no route" : swapQuote ? `≈ ${amt(swapQuote.usdgOut, 6)} USDG` : "–"}</b>
-            <span>{isUsdg ? "no swap needed" : swapQuote && swapQuote !== "none" ? `via ${swapQuote.quote.providerName}` : "aggregator swap"}</span>
+            <b>{swapQuote === "none" ? t("route.noRoute") : swapQuote ? t("route.usdg", { n: amt(swapQuote.usdgOut, 6) }) : "–"}</b>
+            <span>{isUsdg ? t("route.noSwap") : swapQuote && swapQuote !== "none" ? t("route.via", { provider: swapQuote.quote.providerName }) : t("route.aggregator")}</span>
           </li>
           <li className="zap-arrow" aria-hidden="true">
             <ArrowRight size={16} />
           </li>
           <li>
-            <b>{received !== null ? `${amt(received, 18, 5)} shares` : shares === "none" ? "cannot quote" : typeof shares === "bigint" ? `≈ ${amt(shares, 18, 5)} shares` : "–"}</b>
-            <span>{vault ? `${vault.symbol} vault` : "vault"}</span>
+            <b>{received !== null ? t("route.shares", { n: amt(received, 18, 5) }) : shares === "none" ? t("route.cannotQuote") : typeof shares === "bigint" ? t("route.sharesEst", { n: amt(shares, 18, 5) }) : "–"}</b>
+            <span>{vault ? t("route.vault", { symbol: vault.symbol }) : t("route.vaultFallback")}</span>
           </li>
         </ol>
 
         {steps ? (
-          <ol className="basket-legs" aria-label="Steps">
+          <ol className="basket-legs" aria-label={t("steps.aria")}>
             {steps.map((s, i) => (
               <li key={s.id} className={`basket-leg is-${s.status === "active" ? "depositing" : s.status}`}>
                 <span className="basket-rank">{String(i + 1).padStart(2, "0")}</span>
                 <div className="basket-leg-main" style={{ gridColumn: "2 / 4" }}>
                   <b>{s.label}</b>
-                  <span>{s.error ?? (s.status === "skipped" ? "Not needed" : "")}</span>
+                  <span>{s.error ?? (s.status === "skipped" ? t("steps.notNeeded") : "")}</span>
                 </div>
                 <span className={`basket-leg-status ${s.status}`}>
                   {s.status === "done" ? (
                     s.hash ? (
                       <a href={explorerTx(s.hash)} target="_blank" rel="noopener noreferrer">
-                        <Check size={13} aria-hidden="true" /> Done
+                        <Check size={13} aria-hidden="true" /> {t("steps.done")}
                       </a>
                     ) : (
                       <>
-                        <Check size={13} aria-hidden="true" /> Done
+                        <Check size={13} aria-hidden="true" /> {t("steps.done")}
                       </>
                     )
                   ) : s.status === "failed" ? (
                     <>
-                      <CircleAlert size={13} aria-hidden="true" /> Failed
+                      <CircleAlert size={13} aria-hidden="true" /> {t("steps.failed")}
                     </>
                   ) : s.status === "active" ? (
-                    "In wallet…"
+                    t("steps.inWallet")
                   ) : s.status === "skipped" ? (
-                    "Skipped"
+                    t("steps.skipped")
                   ) : (
-                    "Queued"
+                    t("steps.queued")
                   )}
                 </span>
               </li>
@@ -370,38 +374,36 @@ export function ZapFlow() {
             ) : note ? (
               <p>{note}</p>
             ) : overBalance ? (
-              <p>That is more {source.symbol} than the wallet holds.</p>
+              <p>{t("foot.overBalance", { symbol: source.symbol })}</p>
             ) : swapQuote === "none" ? (
-              <p>No aggregator route for that amount. Try another token or a different amount.</p>
+              <p>{t("foot.noRoute")}</p>
             ) : shares === "none" ? (
-              <p>The vault cannot take that deposit right now (under 10 USDG, a paused guard or a thin pool). Try another vault or amount.</p>
+              <p>{t("foot.cannotDeposit")}</p>
             ) : ready ? (
-              <p>
-                {isUsdg ? "One approval and one deposit" : `${source.native ? "One swap" : "One approval, one swap"}, one approval and one deposit`} to sign, one after another. The swap goes through the aggregator at 0.5% slippage; the deposit is the same router call as the vault page.
-              </p>
+              <p>{t("foot.ready", { steps: isUsdg ? t("foot.readyUsdg") : source.native ? t("foot.readyNative") : t("foot.readyToken") })}</p>
             ) : (
-              <p>Enter an amount and pick a vault. Vaults are listed by realized fee APR; those under {usd(BASKET_TVL_FLOOR)} come last.</p>
+              <p>{t("foot.enter", { floor: usd(BASKET_TVL_FLOOR) })}</p>
             )}
           </div>
           {!owner ? (
             <button type="button" className="hex hex-green" onClick={() => void connect()} disabled={!available}>
-              {available ? "Connect wallet" : "No wallet detected"}
+              {available ? t("foot.connect") : t("foot.noWallet")}
             </button>
           ) : steps && steps.some((s) => s.status === "failed") ? (
             <button type="button" className="hex hex-green" onClick={retry} disabled={busy}>
-              <RefreshCw size={14} aria-hidden="true" /> Retry from the failed step
+              <RefreshCw size={14} aria-hidden="true" /> {t("foot.retry")}
             </button>
           ) : steps && steps.every((s) => s.status === "done" || s.status === "skipped") ? (
             <button type="button" className="hex hex-green" onClick={reset}>
-              Zap again <Check size={14} aria-hidden="true" />
+              {t("foot.again")} <Check size={14} aria-hidden="true" />
             </button>
           ) : steps ? (
             <button type="button" className="hex hex-green" disabled>
-              <span className="managed-progress-spinner" aria-hidden="true" /> Signing…
+              <span className="managed-progress-spinner" aria-hidden="true" /> {t("foot.signing")}
             </button>
           ) : (
             <button type="button" className="hex hex-green" onClick={start} disabled={!ready || busy}>
-              Zap in <ArrowRight size={14} aria-hidden="true" />
+              {t("foot.zapIn")} <ArrowRight size={14} aria-hidden="true" />
             </button>
           )}
         </div>

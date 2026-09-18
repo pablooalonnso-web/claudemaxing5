@@ -5,15 +5,23 @@ import { useCallback, useEffect, useState } from "react";
 import { ArrowUpRight, Send } from "lucide-react";
 import { StockLogo } from "@/components/StockLogo";
 import type { Brief, IntelligenceSignals, VaultSignal } from "@/server/intelligence";
+import { useT } from "@/i18n/client";
+import type { TFunction } from "@/i18n";
 import { formatPercent, formatUtc } from "@/lib/format";
 import styles from "@/styles/intelligence-desk.module.css";
 
 type Payload = { analyst: "online" | "offline"; signals: IntelligenceSignals; brief: Brief | null; guided: readonly { id: string; label: string }[] };
 
 const usd = (n: number, d = 0) => n.toLocaleString("en-US", { style: "currency", currency: "USD", maximumFractionDigits: d });
-const age = (s: number | null) => (s === null ? "–" : s < 3600 ? `${Math.round(s / 60)} min` : `${(s / 3600).toFixed(1)} h`);
+const age = (t: TFunction, s: number | null) => (s === null ? "–" : s < 3600 ? t("card.age.min", { n: Math.round(s / 60) }) : t("card.age.hours", { n: (s / 3600).toFixed(1) }));
+
+/** Guided question ids are fixed on the server; only the button label is localised here. */
+const GUIDED_IDS = new Set(["edge", "ranking", "fees", "oracle", "paused", "lending", "size"]);
+const guidedLabel = (t: TFunction, q: { id: string; label: string }) => (GUIDED_IDS.has(q.id) ? t(`guided.${q.id}`) : q.label);
+const alertLevel = (t: TFunction, level: string) => (level === "watch" ? t("alert.watch") : level === "info" ? t("alert.info") : level);
 
 function VaultCard({ v }: { v: VaultSignal }) {
+  const t = useT("intelligence");
   const pos = v.rangePosition;
   const clamped = pos === null ? null : Math.min(1.04, Math.max(-0.04, pos));
   const cls = v.inRange === false ? styles.out : v.flags.some((f) => f.startsWith("near") || f === "oracle stale") ? styles.flag : "";
@@ -22,10 +30,10 @@ function VaultCard({ v }: { v: VaultSignal }) {
       <div className={styles.vaultHead}>
         <StockLogo symbol={v.symbol} size={28} />
         <b>{v.symbol}</b>
-        <small>{v.apr === null ? "no window" : `${formatPercent(v.apr)} fee APR`}</small>
+        <small>{v.apr === null ? t("card.noWindow") : t("card.feeApr", { apr: formatPercent(v.apr) })}</small>
       </div>
       <div>
-        <div className={styles.range} aria-label={pos === null ? "Range unknown" : `Price at ${Math.round(pos * 100)}% of the range`}>
+        <div className={styles.range} aria-label={pos === null ? t("card.range.unknown") : t("card.range.at", { pct: Math.round(pos * 100) })}>
           {pos !== null ? <em style={{ left: `${Math.max(0, Math.min(100, (pos < 0.5 ? pos : 0.5) * 100))}%`, width: `${Math.abs(0.5 - Math.max(0, Math.min(1, pos))) * 100}%` }} /> : null}
           {clamped !== null ? <i style={{ left: `${((clamped + 0.04) / 1.08) * 100}%` }} /> : null}
         </div>
@@ -37,16 +45,16 @@ function VaultCard({ v }: { v: VaultSignal }) {
       </div>
       <div className={styles.kv}>
         <span>
-          Assets <b>{v.tvl === null ? "–" : usd(v.tvl)}</b>
+          {t("card.assets")} <b>{v.tvl === null ? "–" : usd(v.tvl)}</b>
         </span>
         <span>
-          Oracle <b>{age(v.oracleAgeSeconds)}</b>
+          {t("card.oracle")} <b>{age(t, v.oracleAgeSeconds)}</b>
         </span>
         <span>
-          Fees to date <b>{v.lifetimeFees === null ? "–" : usd(v.lifetimeFees, 2)}</b>
+          {t("card.feesToDate")} <b>{v.lifetimeFees === null ? "–" : usd(v.lifetimeFees, 2)}</b>
         </span>
         <span>
-          Range width <b>{v.rangeWidthPct === null ? "–" : `${v.rangeWidthPct.toFixed(1)}%`}</b>
+          {t("card.rangeWidth")} <b>{v.rangeWidthPct === null ? "–" : `${v.rangeWidthPct.toFixed(1)}%`}</b>
         </span>
       </div>
       {v.flags.length ? (
@@ -57,13 +65,14 @@ function VaultCard({ v }: { v: VaultSignal }) {
         </div>
       ) : null}
       <Link href={v.href} className={styles.muted}>
-        Open vault ↗
+        {t("card.open")}
       </Link>
     </article>
   );
 }
 
 export function IntelligenceDesk({ initial }: { initial: Payload | null }) {
+  const t = useT("intelligence");
   const [data, setData] = useState<Payload | null>(initial);
   const [error, setError] = useState(false);
   const [question, setQuestion] = useState("");
@@ -83,8 +92,8 @@ export function IntelligenceDesk({ initial }: { initial: Payload | null }) {
   }, []);
   useEffect(() => {
     if (!initial) void refresh();
-    const t = setInterval(() => document.visibilityState === "visible" && void refresh(), 60_000);
-    return () => clearInterval(t);
+    const i = setInterval(() => document.visibilityState === "visible" && void refresh(), 60_000);
+    return () => clearInterval(i);
   }, [refresh, initial]);
 
   async function guided(id: string, label: string) {
@@ -94,10 +103,10 @@ export function IntelligenceDesk({ initial }: { initial: Payload | null }) {
     try {
       const r = await fetch(`/api/intelligence/answer?q=${encodeURIComponent(id)}`, { cache: "no-store" });
       const j = (await r.json()) as { data?: { answer: string }; error?: string };
-      if (!r.ok || !j.data) throw new Error(j.error ?? "Could not compute that answer.");
+      if (!r.ok || !j.data) throw new Error(j.error ?? "");
       setAnswer({ q: label, a: j.data.answer, source: "rules" });
     } catch (e) {
-      setAskError(e instanceof Error ? e.message : "Could not compute that answer.");
+      setAskError(e instanceof Error && e.message ? e.message : t("ask.error.guided"));
     } finally {
       setAsking(false);
     }
@@ -111,11 +120,11 @@ export function IntelligenceDesk({ initial }: { initial: Payload | null }) {
     try {
       const r = await fetch("/api/intelligence/ask", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ question: text }) });
       const j = (await r.json()) as { data?: { answer: string; model: string }; error?: string };
-      if (!r.ok || !j.data) throw new Error(j.error ?? "The analyst could not answer.");
+      if (!r.ok || !j.data) throw new Error(j.error ?? "");
       setAnswer({ q: text, a: j.data.answer, source: "model" });
       setQuestion("");
     } catch (e) {
-      setAskError(e instanceof Error ? e.message : "The analyst could not answer.");
+      setAskError(e instanceof Error && e.message ? e.message : t("ask.error.free"));
     } finally {
       setAsking(false);
     }
@@ -131,11 +140,11 @@ export function IntelligenceDesk({ initial }: { initial: Payload | null }) {
         <section className={`${styles.panel} ${styles.dark}`} aria-labelledby="brief-heading">
           <div className={styles.head}>
             <div>
-              <p className={`eyebrow ${styles.eyebrow}`}>The brief</p>
-              <h2 id="brief-heading">What the chain says right now.</h2>
+              <p className={`eyebrow ${styles.eyebrow}`}>{t("brief.eyebrow")}</p>
+              <h2 id="brief-heading">{t("brief.title")}</h2>
             </div>
             <span className={styles.pill}>
-              <i aria-hidden="true" /> {data?.brief?.source === "model" ? "Model reading" : "Computed · rules, not a model"}
+              <i aria-hidden="true" /> {data?.brief?.source === "model" ? t("brief.pill.model") : t("brief.pill.rules")}
             </span>
           </div>
           {data?.brief ? (
@@ -154,63 +163,70 @@ export function IntelligenceDesk({ initial }: { initial: Payload | null }) {
                 </ul>
               ) : null}
               <p className={styles.meta}>
-                {data.brief.source === "model" ? `Written by ${data.brief.model} ` : "Assembled by rules "}
-                {formatUtc(data.brief.generatedAt)} from signals read at block {s?.block ?? "–"}. Not financial advice.
+                {data.brief.source === "model" ? t("brief.meta.model", { model: data.brief.model ?? "" }) : t("brief.meta.rules")}
+                {t("brief.meta.rest", { time: formatUtc(data.brief.generatedAt), block: s?.block ?? "–" })}
               </p>
             </>
           ) : (
-            <div className={styles.offline}>{error ? "The signal feed could not be read. It retries every minute." : "Reading the vaults and writing the brief…"}</div>
+            <div className={styles.offline}>{error ? t("feed.error") : t("brief.loading")}</div>
           )}
         </section>
 
         <section className={styles.panel} aria-labelledby="totals-heading">
           <div className={styles.head}>
             <div>
-              <p className="eyebrow">Signals</p>
-              <h2 id="totals-heading">Across the 18 vaults.</h2>
+              <p className="eyebrow">{t("signals.eyebrow")}</p>
+              <h2 id="totals-heading">{t("signals.title")}</h2>
             </div>
             <span className={styles.pill}>
-              <i aria-hidden="true" /> {s ? `Block ${s.block ?? "–"}` : error ? "Feed unavailable" : "Reading…"}
+              <i aria-hidden="true" /> {s ? t("signals.pill.block", { block: s.block ?? "–" }) : error ? t("signals.pill.unavailable") : t("signals.pill.reading")}
             </span>
           </div>
           {s ? (
             <>
               <div className={styles.stats}>
                 <div className={styles.stat}>
-                  <span>Assets</span>
+                  <span>{t("signals.assets")}</span>
                   <strong>{usd(s.totals.tvl)}</strong>
                 </div>
                 <div className={styles.stat}>
-                  <span>Fees to date</span>
+                  <span>{t("signals.feesToDate")}</span>
                   <strong>{usd(s.totals.lifetimeFees)}</strong>
                 </div>
                 <div className={styles.stat}>
-                  <span>Open</span>
+                  <span>{t("signals.open")}</span>
                   <strong>{s.totals.open} / 18</strong>
                 </div>
                 <div className={styles.stat}>
-                  <span>Near an edge</span>
+                  <span>{t("signals.nearEdge")}</span>
                   <strong>{s.totals.nearEdge + s.totals.outOfRange}</strong>
                 </div>
               </div>
               {s.lending ? (
                 <p className={styles.muted} style={{ marginTop: 14 }}>
-                  Lending: {s.lending.name} {s.lending.state.toLowerCase()}, {usd(s.lending.supplied)} supplied, {usd(s.lending.borrowed)} borrowed, {s.lending.utilisationPct.toFixed(1)}% utilised, borrow{" "}
-                  {formatPercent(s.lending.borrowApr)}, supply {formatPercent(s.lending.supplyApr)}.
+                  {t("signals.lending", {
+                    name: s.lending.name,
+                    state: s.lending.state.toLowerCase(),
+                    supplied: usd(s.lending.supplied),
+                    borrowed: usd(s.lending.borrowed),
+                    util: s.lending.utilisationPct.toFixed(1),
+                    borrowApr: formatPercent(s.lending.borrowApr),
+                    supplyApr: formatPercent(s.lending.supplyApr),
+                  })}
                 </p>
               ) : null}
-              <ul className={styles.alerts} aria-label="Alerts">
+              <ul className={styles.alerts} aria-label={t("signals.alerts.aria")}>
                 {s.alerts.slice(0, 8).map((a) => (
                   <li key={a.text} className={a.level === "watch" ? styles.watch : ""}>
-                    <b>{a.level}</b>
+                    <b>{alertLevel(t, a.level)}</b>
                     <span>{a.text}</span>
                   </li>
                 ))}
-                {s.alerts.length === 0 ? <li>Nothing flagged. Every vault is inside its range with a fresh feed.</li> : null}
+                {s.alerts.length === 0 ? <li>{t("signals.alerts.none")}</li> : null}
               </ul>
             </>
           ) : (
-            <p className={styles.muted}>{error ? "The signal feed could not be read. It retries every minute." : "Reading the vaults…"}</p>
+            <p className={styles.muted}>{error ? t("feed.error") : t("signals.loading")}</p>
           )}
         </section>
       </div>
@@ -218,18 +234,18 @@ export function IntelligenceDesk({ initial }: { initial: Payload | null }) {
       <section className={styles.panel} aria-labelledby="ask-heading">
         <div className={styles.head}>
           <div>
-            <p className="eyebrow">Ask</p>
-            <h2 id="ask-heading">Question the numbers.</h2>
+            <p className="eyebrow">{t("ask.eyebrow")}</p>
+            <h2 id="ask-heading">{t("ask.title")}</h2>
           </div>
           <span className={styles.pill}>
-            <i aria-hidden="true" /> {online ? "Guided answers computed · free text via model" : "Answers computed from the signals"}
+            <i aria-hidden="true" /> {online ? t("ask.pill.online") : t("ask.pill.offline")}
           </span>
         </div>
         <div className={styles.ask}>
           <div className={styles.chips}>
             {(data?.guided ?? []).map((q) => (
-              <button key={q.id} type="button" disabled={asking || !data} onClick={() => void guided(q.id, q.label)}>
-                {q.label}
+              <button key={q.id} type="button" disabled={asking || !data} onClick={() => void guided(q.id, guidedLabel(t, q))}>
+                {guidedLabel(t, q)}
               </button>
             ))}
           </div>
@@ -241,9 +257,9 @@ export function IntelligenceDesk({ initial }: { initial: Payload | null }) {
                 void submit(question);
               }}
             >
-              <input value={question} onChange={(e) => setQuestion(e.target.value)} maxLength={400} placeholder="Or ask in your own words…" disabled={asking} aria-label="Your question" />
+              <input value={question} onChange={(e) => setQuestion(e.target.value)} maxLength={400} placeholder={t("ask.placeholder")} disabled={asking} aria-label={t("ask.label")} />
               <button type="submit" className="hex hex-green" disabled={asking || question.trim().length < 3}>
-                {asking ? "Thinking…" : "Ask"} <Send size={14} aria-hidden="true" />
+                {asking ? t("ask.thinking") : t("ask.submit")} <Send size={14} aria-hidden="true" />
               </button>
             </form>
           ) : null}
@@ -255,13 +271,14 @@ export function IntelligenceDesk({ initial }: { initial: Payload | null }) {
               </p>
               {answer.a}
               <p className={styles.muted} style={{ marginTop: 10 }}>
-                {answer.source === "rules" ? "Computed from the signals by rules. No model involved." : "Written by a language model that only sees the signals on this page."}
+                {answer.source === "rules" ? t("answer.source.rules") : t("answer.source.model")}
               </p>
             </div>
           ) : null}
           <p className={styles.muted}>
-            Guided answers are computed on the server from the same signals shown here, read from the chain a moment earlier.
-            {online ? " Free-text questions go to a language model that sees only those signals." : ""} Everything describes and compares; nothing here advises. Vault shares move with the stock price.
+            {t("ask.note.1")}
+            {online ? t("ask.note.online") : ""}
+            {t("ask.note.2")}
           </p>
         </div>
       </section>
@@ -269,10 +286,10 @@ export function IntelligenceDesk({ initial }: { initial: Payload | null }) {
       <section className={styles.panel} aria-labelledby="vaults-heading">
         <div className={styles.head}>
           <div>
-            <p className="eyebrow">Vault by vault</p>
-            <h2 id="vaults-heading">Where each price sits in its range.</h2>
+            <p className="eyebrow">{t("vaults.eyebrow")}</p>
+            <h2 id="vaults-heading">{t("vaults.title")}</h2>
           </div>
-          <p className={styles.muted}>Marker is the pool price between the range bounds. Flagged vaults first. Refreshed every minute.</p>
+          <p className={styles.muted}>{t("vaults.note")}</p>
         </div>
         <div className={styles.vaults}>
           {sorted.map((v) => (
@@ -280,9 +297,9 @@ export function IntelligenceDesk({ initial }: { initial: Payload | null }) {
           ))}
         </div>
         <p className={styles.muted} style={{ marginTop: 16 }}>
-          Signals updated {s ? formatUtc(s.generatedAt) : "–"}.{" "}
+          {t("vaults.updated", { time: s ? formatUtc(s.generatedAt) : "–" })}{" "}
           <Link href="/verify">
-            How the reads are verified <ArrowUpRight size={12} aria-hidden="true" />
+            {t("vaults.verify")} <ArrowUpRight size={12} aria-hidden="true" />
           </Link>
         </p>
       </section>

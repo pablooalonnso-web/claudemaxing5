@@ -12,6 +12,7 @@ import {
 } from "react";
 import { createWalletClient, custom, getAddress, type Address, type EIP1193Provider, type WalletClient } from "viem";
 import { robinhoodChain } from "@/lib/chain";
+import { useT } from "@/i18n/client";
 
 type WalletState = {
   /** True once the provider has checked for an existing connection. */
@@ -52,6 +53,7 @@ const CHAIN_PARAMS = {
 };
 
 export function WalletProvider({ children }: { children: ReactNode }) {
+  const t = useT("wallet");
   const [ready, setReady] = useState(false);
   const [available, setAvailable] = useState(false);
   const [address, setAddress] = useState<Address>();
@@ -117,7 +119,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     const provider = providerRef.current ?? injected();
     providerRef.current = provider;
     if (!provider) {
-      setError("No browser wallet was found. Install MetaMask, Rabby or another EIP-1193 wallet.");
+      setError(t("error.noWallet"));
       return;
     }
     setConnecting(true);
@@ -141,11 +143,11 @@ export function WalletProvider({ children }: { children: ReactNode }) {
       }
     } catch (e) {
       const code = (e as { code?: number }).code;
-      setError(code === 4001 ? "Connection request rejected." : "Could not connect the wallet.");
+      setError(code === 4001 ? t("error.rejected") : t("error.failed"));
     } finally {
       setConnecting(false);
     }
-  }, [switchChain]);
+  }, [switchChain, t]);
 
   const disconnect = useCallback(() => {
     setAddress(undefined);

@@ -1,5 +1,6 @@
+import { getT } from "@/i18n/server";
 
-/* Blueprint-style vector art used inside the hatched frames on the home page. */
+/* Blueprint-style vector art used inside the hatched frames on the home page. Labels come from the `home` namespace (`art.*`). */
 
 function Grid({ color = "#C5FFD6", size = 24, opacity = 0.35 }: { color?: string; size?: number; opacity?: number }) {
   const lines = [];
@@ -13,7 +14,8 @@ function Grid({ color = "#C5FFD6", size = 24, opacity = 0.35 }: { color?: string
 }
 
 /** STEP 01: a USDG deposit split into two legs and joined into a pool. */
-export function DepositArt() {
+export async function DepositArt() {
+  const t = await getT("home");
   return (
     <svg viewBox="0 0 600 400" className="home-art" aria-hidden="true">
       <rect width="600" height="400" fill="#3D3B4F" />
@@ -31,17 +33,17 @@ export function DepositArt() {
         </text>
         <rect x="340" y="102" width="60" height="36" fill="#FFACFE" />
         <text x="370" y="125" textAnchor="middle" fill="#3D3B4F" fontWeight="700">
-          STOCK
+          {t("art.deposit.stock")}
         </text>
         <rect x="340" y="262" width="60" height="36" fill="#C5FFD6" />
         <text x="370" y="285" textAnchor="middle" fill="#3D3B4F" fontWeight="700">
           USDG
         </text>
         <text x="200" y="108" textAnchor="middle" fill="#DAFF01">
-          SWAP 50%
+          {t("art.deposit.swap")}
         </text>
         <text x="200" y="312" textAnchor="middle" fill="#DAFF01">
-          KEEP 50%
+          {t("art.deposit.keep")}
         </text>
       </g>
       <g transform="translate(520 200)">
@@ -54,7 +56,7 @@ export function DepositArt() {
           <ellipse rx="30" ry="46" />
         </g>
         <text y="70" textAnchor="middle" fontFamily="var(--font-mono), monospace" fontSize="11" fill="#FFCFFE" letterSpacing="1">
-          POOL
+          {t("art.deposit.pool")}
         </text>
       </g>
       <g fill="#DAFF01">
@@ -68,7 +70,8 @@ export function DepositArt() {
 }
 
 /** STEP 02: concentrated liquidity around the oracle price. */
-export function RangeArt() {
+export async function RangeArt() {
+  const t = await getT("home");
   const bars = [8, 14, 22, 36, 58, 84, 100, 84, 58, 36, 22, 14, 8];
   return (
     <svg viewBox="0 0 600 400" className="home-art" aria-hidden="true">
@@ -83,16 +86,16 @@ export function RangeArt() {
         <line x1="203" y1="-30" x2="203" y2="250" stroke="#FFACFE" strokeWidth="1.5" />
         <g fontFamily="var(--font-mono), monospace" fontSize="11" letterSpacing="1">
           <text x="126" y="270" textAnchor="middle" fill="#FFCFFE">
-            LOWER
+            {t("art.range.lower")}
           </text>
           <text x="292" y="270" textAnchor="middle" fill="#FFCFFE">
-            UPPER
+            {t("art.range.upper")}
           </text>
           <text x="203" y="-38" textAnchor="middle" fill="#FFACFE">
-            ORACLE
+            {t("art.range.oracle")}
           </text>
           <text x="440" y="235" textAnchor="end" fill="#C5FFD6" opacity="0.7">
-            LIQUIDITY
+            {t("art.range.liquidity")}
           </text>
         </g>
         <g fill="#DAFF01">
@@ -107,7 +110,8 @@ export function RangeArt() {
 }
 
 /** STEP 03: the fee split: 70 compounds, 20 buyback, 10 treasury. */
-export function FeeSplitArt() {
+export async function FeeSplitArt() {
+  const t = await getT("home");
   return (
     <svg viewBox="0 0 600 400" className="home-art" aria-hidden="true">
       <rect width="600" height="400" fill="#3D3B4F" />
@@ -124,24 +128,24 @@ export function FeeSplitArt() {
           70%
         </text>
         <text x="140" y="105" textAnchor="middle" fill="#000">
-          COMPOUNDS
+          {t("art.split.compounds")}
         </text>
         <rect x="400" y="300" width="120" height="44" fill="#DAFF01" />
         <text x="460" y="320" textAnchor="middle" fill="#3D3B4F" fontWeight="700">
           20%
         </text>
         <text x="460" y="335" textAnchor="middle" fill="#3D3B4F">
-          BUYBACK · BURN
+          {t("art.split.buyback")}
         </text>
         <rect x="80" y="300" width="120" height="44" fill="#FFCFFE" />
         <text x="140" y="320" textAnchor="middle" fill="#3D3B4F" fontWeight="700">
           10%
         </text>
         <text x="140" y="335" textAnchor="middle" fill="#3D3B4F">
-          TREASURY
+          {t("art.split.treasury")}
         </text>
         <text x="300" y="206" textAnchor="middle" fill="#FFCFFE" fontSize="13">
-          CLAIMED FEES
+          {t("art.split.claimed")}
         </text>
       </g>
       <g fill="none" stroke="#C5FFD6" strokeWidth="1.2" strokeDasharray="5 5" className="g-marching">
@@ -156,7 +160,8 @@ export function FeeSplitArt() {
 }
 
 /** Lending art: vault shares pledged as collateral, USDG borrowed. */
-export function LendingArt() {
+export async function LendingArt() {
+  const t = await getT("home");
   return (
     <svg viewBox="0 0 600 400" className="home-art" aria-hidden="true">
       <rect width="600" height="400" fill="#EEEEEE" />
@@ -176,14 +181,14 @@ export function LendingArt() {
       <g fontFamily="var(--font-mono), monospace" fontSize="11" letterSpacing="1" fill="#3D3B4F">
         <rect x="150" y="60" width="100" height="30" fill="#FFACFE" />
         <text x="200" y="80" textAnchor="middle" fontWeight="700">
-          COLLATERAL
+          {t("art.lending.collateral")}
         </text>
         <rect x="350" y="310" width="100" height="30" fill="#28E99F" />
         <text x="400" y="330" textAnchor="middle" fontWeight="700">
-          BORROW USDG
+          {t("art.lending.borrow")}
         </text>
         <text x="300" y="205" textAnchor="middle" fill="#756CF5" fontSize="12">
-          LTV · ORACLE · CAP
+          {t("art.lending.params")}
         </text>
       </g>
       <g fill="#FFACFE">
@@ -196,7 +201,8 @@ export function LendingArt() {
 }
 
 /** Stack cards: a partner mark centred on a faint wireframe. */
-export function CtaArt() {
+export async function CtaArt() {
+  const t = await getT("home");
   const nodes = [
     [300, 30],
     [80, 100],
@@ -219,7 +225,7 @@ export function CtaArt() {
           <rect y="11" width="60" height="8" fill="#28E99F" />
           <rect y="22" width="60" height="8" fill="#28E99F" />
           <text x="30" y="44" textAnchor="middle" fontFamily="var(--font-mono), monospace" fontSize="10" letterSpacing="1.5" fill="#EEEEEE">
-            FEES
+            {t("art.cta.fees")}
           </text>
         </g>
       ))}
@@ -230,15 +236,15 @@ export function CtaArt() {
         </text>
         <rect x="0" y="32" width="300" height="20" fill="#FFCFFE" />
         <text x="24" y="46" fontFamily="var(--font-mono), monospace" fontSize="10" fill="#3D3B4F">
-          01 − lower bound
+          {t("art.cta.lower")}
         </text>
         <rect x="0" y="54" width="300" height="20" fill="#C5FFD6" />
         <text x="24" y="68" fontFamily="var(--font-mono), monospace" fontSize="10" fill="#3D3B4F">
-          01 + current price · in range
+          {t("art.cta.current")}
         </text>
         <rect x="0" y="76" width="300" height="20" fill="#C5FFD6" />
         <text x="24" y="90" fontFamily="var(--font-mono), monospace" fontSize="10" fill="#3D3B4F">
-          02 + upper bound
+          {t("art.cta.upper")}
         </text>
         <g transform="translate(12 118)">
           <circle cx="6" cy="6" r="6" fill="#28E99F" />
@@ -246,11 +252,11 @@ export function CtaArt() {
             vertex
           </text>
           <text x="70" y="10" fontFamily="var(--font-sans), sans-serif" fontSize="9" fill="#3D3B4F" opacity="0.6">
-            just now
+            {t("art.cta.justNow")}
           </text>
         </g>
         <text x="12" y="150" fontFamily="var(--font-sans), sans-serif" fontSize="10" fill="#3D3B4F">
-          Fees claimed. 70% compounded, 20% to buyback, 10% to treasury.
+          {t("art.cta.comment")}
         </text>
       </g>
     </svg>

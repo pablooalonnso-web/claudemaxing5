@@ -8,6 +8,7 @@ import { StockLogo } from "@/components/StockLogo";
 import { PortfolioActivity } from "./PortfolioActivity";
 import { useProtocolVaults } from "@/components/data/ProtocolVaultProvider";
 import { useWallet } from "@/components/wallet/WalletProvider";
+import { useT } from "@/i18n/client";
 import { erc20Abi, managedVaultAbi } from "@/lib/abis";
 import { BRAND } from "@/lib/brand";
 import { explorerAddress, explorerTx, publicClient, robinhoodChain, TOKEN_ADDRESS, USDG_ADDRESS } from "@/lib/chain";
@@ -33,6 +34,7 @@ function TokenIcon({ token }: { token: "USDG" | "TOKEN" | "ETH" }) {
 type PositionRow = { pin: VaultPin; shares: bigint | null; assets: bigint | null; observedAt: string | null };
 
 function VaultPositions({ owner }: { owner: Address }) {
+  const t = useT("portfolio");
   const { singles, rows: snapshots, error } = useProtocolVaults();
   const [rows, setRows] = useState<PositionRow[] | null>(null);
   useEffect(() => {
@@ -56,11 +58,11 @@ function VaultPositions({ owner }: { owner: Address }) {
       if (alive) setRows(list);
     };
     void load();
-    const t = setInterval(load, 15_000);
+    const timer = setInterval(load, 15_000);
     window.addEventListener(BRAND.vaultUpdatedEvent, load);
     return () => {
       alive = false;
-      clearInterval(t);
+      clearInterval(timer);
       window.removeEventListener(BRAND.vaultUpdatedEvent, load);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -72,36 +74,36 @@ function VaultPositions({ owner }: { owner: Address }) {
     <section className="wallet-vault-position managed-portfolio-positions">
       <div className="wallet-section-heading">
         <div>
-          <p className="eyebrow">Your vault positions</p>
-          <h2>Individual stocks</h2>
+          <p className="eyebrow">{t("positions.eyebrow")}</p>
+          <h2>{t("positions.title")}</h2>
         </div>
-        <Link href="/vaults">Browse vaults ↗</Link>
+        <Link href="/vaults">{t("positions.browse")}</Link>
       </div>
       <div className="wallet-position-value">
-        <span>Total position value</span>
+        <span>{t("positions.total")}</span>
         <strong className="mono">{total === null ? "–" : money(total)}</strong>
-        <small>Current holdings valued at the last published market price</small>
+        <small>{t("positions.totalHint")}</small>
       </div>
       {held.map((r) => (
         <Link className="managed-portfolio-row" href={r.pin.href} key={r.pin.vault}>
           <StockLogo symbol={r.pin.symbol} size={36} />
           <span>
             <b>{r.pin.symbol}</b>
-            <small>{formatUnits(r.shares ?? 0n, 18)} shares</small>
+            <small>{t("positions.shares", { count: formatUnits(r.shares ?? 0n, 18) })}</small>
           </span>
           <span>
             <b className="mono">{r.assets === null ? "–" : money(r.assets)}</b>
-            <small>{r.observedAt ? `Price: ${new Date(r.observedAt).toLocaleString()}` : "Manage ↗"}</small>
+            <small>{r.observedAt ? t("positions.price", { date: new Date(r.observedAt).toLocaleString() }) : t("positions.manage")}</small>
           </span>
         </Link>
       ))}
-      {held.length === 0 ? <p role="status">{pending ? "Checking your individual vault positions…" : "No individual vault shares in this wallet."}</p> : null}
+      {held.length === 0 ? <p role="status">{pending ? t("positions.checking") : t("positions.none")}</p> : null}
       {error ? (
         <p className="fine-print" role="status">
-          Some valuations are delayed. Share balances remain visible while values refresh.
+          {t("positions.delayed")}
         </p>
       ) : null}
-      <p className="fine-print">Position value includes changes in the underlying tokens. It is not fee earnings.</p>
+      <p className="fine-print">{t("positions.note")}</p>
     </section>
   );
 }
@@ -109,6 +111,7 @@ function VaultPositions({ owner }: { owner: Address }) {
 type AssetInfo = { address: Address | null; decimals: number; symbol: string; balance: bigint };
 
 function TransferForm({ owner, onTransferred }: { owner: Address; onTransferred: () => void }) {
+  const t = useT("portfolio");
   const { walletClient, chainId, switchChain } = useWallet();
   const [assetKey, setAssetKey] = useState<"ETH" | "USDG" | "TOKEN" | "custom">("ETH");
   const [custom, setCustom] = useState("");
@@ -144,7 +147,7 @@ function TransferForm({ owner, onTransferred }: { owner: Address; onTransferred:
           : { address: null, decimals: 18, symbol: "ETH", balance: await client.getBalance({ address: owner }) };
         if (!cancelled) setAsset(info);
       } catch {
-        if (!cancelled) setError("Could not read this asset. Check the token address and try again.");
+        if (!cancelled) setError(t("transfer.readError"));
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -152,21 +155,21 @@ function TransferForm({ owner, onTransferred }: { owner: Address; onTransferred:
     return () => {
       cancelled = true;
     };
-  }, [owner, assetKey, tokenAddress, tick]);
+  }, [owner, assetKey, tokenAddress, tick, t]);
 
   function prepare() {
     if (!asset) return;
     try {
-      if (!isAddress(recipient)) throw new Error("Enter a valid receiving wallet address.");
-      if (getAddress(recipient) === owner) throw new Error("The receiving wallet must be a different address.");
-      if (!/^\d*(\.\d*)?$/.test(value) || !value || value === ".") throw new Error("Enter an amount to send.");
+      if (!isAddress(recipient)) throw new Error(t("transfer.err.invalidRecipient"));
+      if (getAddress(recipient) === owner) throw new Error(t("transfer.err.sameAddress"));
+      if (!/^\d*(\.\d*)?$/.test(value) || !value || value === ".") throw new Error(t("transfer.err.enterAmount"));
       const raw = parseUnits(value, asset.decimals);
-      if (raw <= 0n) throw new Error("Enter an amount above zero.");
-      if (raw > asset.balance) throw new Error("Amount exceeds your wallet balance.");
+      if (raw <= 0n) throw new Error(t("transfer.err.aboveZero"));
+      if (raw > asset.balance) throw new Error(t("transfer.err.exceeds"));
       setReview({ recipient: getAddress(recipient), amount: raw });
       setError("");
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Check the amount and address.");
+      setError(e instanceof Error ? e.message : t("transfer.err.check"));
     }
   }
 
@@ -175,7 +178,7 @@ function TransferForm({ owner, onTransferred }: { owner: Address; onTransferred:
     busyRef.current = true;
     setBusy(true);
     setError("");
-    setStatus("Confirm the withdrawal in your wallet.");
+    setStatus(t("transfer.status.confirm"));
     let tx: Hex | null = null;
     try {
       if (chainId !== robinhoodChain.id) await switchChain();
@@ -186,14 +189,14 @@ function TransferForm({ owner, onTransferred }: { owner: Address; onTransferred:
       const gas = await client.estimateGas({ account: owner, to, data, value: val });
       const fees = await client.estimateFeesPerGas();
       const eth = await client.getBalance({ address: owner });
-      if (eth < val + gas * fees.maxFeePerGas) throw new Error("Leave enough ETH in your wallet for the network fee.");
+      if (eth < val + gas * fees.maxFeePerGas) throw new Error(t("transfer.err.gas"));
       tx = await walletClient.sendTransaction({ account: owner, chain: robinhoodChain, to, data, value: val, gas: (gas * 125n + 99n) / 100n, maxFeePerGas: fees.maxFeePerGas, maxPriorityFeePerGas: fees.maxPriorityFeePerGas });
       setHash(tx);
-      setStatus("Withdrawal submitted. Waiting for confirmation…");
+      setStatus(t("transfer.status.submitted"));
       const receipt = await client.waitForTransactionReceipt({ hash: tx, timeout: 120_000 });
-      if (receipt.status !== "success") setStatus("The transaction reverted. No assets were sent; network fees may still apply.");
+      if (receipt.status !== "success") setStatus(t("transfer.status.reverted"));
       else {
-        setStatus("Withdrawal confirmed. Your assets were sent to the receiving wallet.");
+        setStatus(t("transfer.status.confirmed"));
         setValue("");
         setReview(null);
         setTick((t) => t + 1);
@@ -201,7 +204,7 @@ function TransferForm({ owner, onTransferred }: { owner: Address; onTransferred:
         window.dispatchEvent(new Event(BRAND.vaultUpdatedEvent));
       }
     } catch (e) {
-      if (tx) setStatus("Transaction submitted; confirmation is still pending. Check its status before sending again.");
+      if (tx) setStatus(t("transfer.status.pending"));
       else {
         setStatus("");
         setError(describeTxError(e));
@@ -216,15 +219,15 @@ function TransferForm({ owner, onTransferred }: { owner: Address; onTransferred:
     <section className="wallet-vault-actions wallet-transfer">
       <div className="wallet-section-heading">
         <div>
-          <p className="eyebrow">Send to another wallet</p>
-          <h2>Withdraw assets</h2>
+          <p className="eyebrow">{t("transfer.eyebrow")}</p>
+          <h2>{t("transfer.title")}</h2>
         </div>
         <Send size={22} strokeWidth={1.4} aria-hidden="true" />
       </div>
-      <p className="wallet-transfer-intro">Send ETH or tokens from this wallet to another address on Robinhood Chain.</p>
+      <p className="wallet-transfer-intro">{t("transfer.intro")}</p>
       <fieldset disabled={busy}>
         <label className="wallet-transfer-label">
-          Asset
+          {t("transfer.asset")}
           <select
             value={assetKey}
             onChange={(e) => {
@@ -233,23 +236,21 @@ function TransferForm({ owner, onTransferred }: { owner: Address; onTransferred:
               setReview(null);
             }}
           >
-            <option value="ETH">ETH · Ether</option>
-            <option value="USDG">USDG · Global Dollar</option>
-            <option value="TOKEN">
-              {BRAND.name} token
-            </option>
-            <option value="custom">Other token · enter contract address</option>
+            <option value="ETH">{t("transfer.opt.eth")}</option>
+            <option value="USDG">{t("transfer.opt.usdg")}</option>
+            <option value="TOKEN">{t("transfer.opt.brand", { brand: BRAND.name })}</option>
+            <option value="custom">{t("transfer.opt.custom")}</option>
           </select>
         </label>
         {assetKey === "custom" ? (
           <label className="wallet-transfer-label">
-            Token contract on Robinhood Chain
+            {t("transfer.contract")}
             <input value={custom} onChange={(e) => setCustom(e.target.value.trim())} placeholder="0x…" spellCheck={false} autoComplete="off" />
-            {custom && !isAddress(custom) ? <small>Enter a valid token contract address.</small> : null}
+            {custom && !isAddress(custom) ? <small>{t("transfer.invalidContract")}</small> : null}
           </label>
         ) : null}
         <label className="wallet-transfer-label">
-          Receiving wallet
+          {t("transfer.recipient")}
           <input
             value={recipient}
             onChange={(e) => {
@@ -263,14 +264,14 @@ function TransferForm({ owner, onTransferred }: { owner: Address; onTransferred:
         </label>
         <label className="amount-box amount-box-input">
           <span className="amount-box-top">
-            <span>Amount</span>
+            <span>{t("transfer.amount")}</span>
             <span>
-              Balance {loading ? "Loading…" : asset ? formatUnits(asset.balance, asset.decimals) : "–"} {asset?.symbol}
+              {t("transfer.balance")} {loading ? t("transfer.loading") : asset ? formatUnits(asset.balance, asset.decimals) : "–"} {asset?.symbol}
             </span>
           </span>
           <span className="wallet-amount-main">
             <input
-              aria-label="Withdrawal amount"
+              aria-label={t("transfer.amountAria")}
               inputMode="decimal"
               placeholder="0.00"
               value={value}
@@ -293,37 +294,37 @@ function TransferForm({ owner, onTransferred }: { owner: Address; onTransferred:
               setReview(null);
             }}
           >
-            Use full token balance
+            {t("transfer.useFull")}
           </button>
         ) : null}
       </fieldset>
-      <p className="fine-print">Keep some ETH for the network fee. The receiving wallet must support Robinhood Chain.</p>
+      <p className="fine-print">{t("transfer.fee")}</p>
       {error ? (
         <p className="wallet-inline-error" role="alert">
           {error}
         </p>
       ) : null}
       {review ? (
-        <div className="wallet-transfer-review" aria-label="Review withdrawal">
-          <span>You send</span>
+        <div className="wallet-transfer-review" aria-label={t("transfer.reviewAria")}>
+          <span>{t("transfer.youSend")}</span>
           <strong>
             {formatUnits(review.amount, asset?.decimals ?? 18)} {asset?.symbol}
           </strong>
-          <span>To</span>
+          <span>{t("transfer.to")}</span>
           <code>{review.recipient}</code>
-          <small>Robinhood Chain · network fee shown in your wallet</small>
+          <small>{t("transfer.feeHint")}</small>
           <button className="btn btn-primary btn-block" disabled={busy} onClick={() => void send()}>
-            {busy ? "Waiting for confirmation…" : "Confirm withdrawal"}
+            {busy ? t("transfer.waiting") : t("transfer.confirmCta")}
           </button>
           {!busy ? (
             <button className="wallet-refresh" onClick={() => setReview(null)}>
-              Edit withdrawal
+              {t("transfer.edit")}
             </button>
           ) : null}
         </div>
       ) : (
         <button className="btn btn-primary btn-block" disabled={!asset || loading || !value || !recipient || busy} onClick={prepare}>
-          Review withdrawal
+          {t("transfer.review")}
         </button>
       )}
       {status ? (
@@ -331,7 +332,7 @@ function TransferForm({ owner, onTransferred }: { owner: Address; onTransferred:
           <span>{status}</span>
           {hash ? (
             <a href={explorerTx(hash)} target="_blank" rel="noreferrer">
-              View transaction <ArrowUpRight size={13} />
+              {t("transfer.viewTx")} <ArrowUpRight size={13} />
             </a>
           ) : null}
         </div>
@@ -341,6 +342,7 @@ function TransferForm({ owner, onTransferred }: { owner: Address; onTransferred:
 }
 
 export function WalletPortfolio() {
+  const t = useT("portfolio");
   const { ready, address, connect, disconnect, available, error: walletError } = useWallet();
   const [balances, setBalances] = useState<{ usdg: bigint | null; token: bigint | null; native: bigint | null; tokenDecimals: number }>({ usdg: null, token: null, native: null, tokenDecimals: 18 });
   const [refreshing, setRefreshing] = useState(false);
@@ -361,18 +363,18 @@ export function WalletPortfolio() {
       setBalances({ usdg, token, native, tokenDecimals });
       setBalanceError("");
     } catch {
-      setBalanceError("Balances could not be refreshed. Showing the last known values.");
+      setBalanceError(t("wallet.balanceError"));
     } finally {
       setRefreshing(false);
     }
-  }, [address]);
+  }, [address, t]);
 
   useEffect(() => {
     void refresh();
-    const t = setInterval(refresh, 30_000);
+    const timer = setInterval(refresh, 30_000);
     window.addEventListener(BRAND.vaultUpdatedEvent, refresh);
     return () => {
-      clearInterval(t);
+      clearInterval(timer);
       window.removeEventListener(BRAND.vaultUpdatedEvent, refresh);
     };
   }, [refresh]);
@@ -384,8 +386,8 @@ export function WalletPortfolio() {
           <RefreshCw size={25} />
         </span>
         <div>
-          <p className="eyebrow">Secure wallet</p>
-          <h2>Loading your wallet session…</h2>
+          <p className="eyebrow">{t("wallet.loadingEyebrow")}</p>
+          <h2>{t("wallet.loading")}</h2>
         </div>
       </section>
     );
@@ -397,12 +399,12 @@ export function WalletPortfolio() {
           <Wallet size={26} strokeWidth={1.5} />
         </span>
         <div>
-          <p className="eyebrow">Your wallet</p>
-          <h2>Connect to open your portfolio.</h2>
-          <p>{available ? "Continue with MetaMask, Rabby, Coinbase Wallet or any browser wallet that supports Robinhood Chain." : "No browser wallet was detected. Install MetaMask, Rabby or another EIP-1193 wallet, then reload this page."}</p>
+          <p className="eyebrow">{t("wallet.eyebrow")}</p>
+          <h2>{t("wallet.connectTitle")}</h2>
+          <p>{available ? t("wallet.available") : t("wallet.notDetected")}</p>
           {walletError ? <p className="wallet-inline-error">{walletError}</p> : null}
           <button className="btn btn-primary" type="button" onClick={() => void connect()} disabled={!available}>
-            Connect wallet
+            {t("wallet.connect")}
           </button>
         </div>
       </section>
@@ -416,8 +418,8 @@ export function WalletPortfolio() {
             <Wallet size={25} strokeWidth={1.4} />
           </span>
           <div>
-            <span className="stat-label">Your wallet · Robinhood Chain</span>
-            <h2>Connected wallet</h2>
+            <span className="stat-label">{t("wallet.label")}</span>
+            <h2>{t("wallet.connected")}</h2>
             <span className="wallet-address mono">{address}</span>
           </div>
         </div>
@@ -432,25 +434,25 @@ export function WalletPortfolio() {
             }}
           >
             {copied ? <Check size={15} /> : <Copy size={15} />}
-            {copied ? "Copied" : "Copy address"}
+            {copied ? t("wallet.copied") : t("wallet.copy")}
           </button>
           <a className="wallet-icon-button" href={explorerAddress(address)} target="_blank" rel="noreferrer">
-            <ArrowUpRight size={15} /> Explorer
+            <ArrowUpRight size={15} /> {t("wallet.explorer")}
           </a>
           <button type="button" className="wallet-icon-button wallet-disconnect" onClick={disconnect}>
-            <LogOut size={15} /> Disconnect
+            <LogOut size={15} /> {t("wallet.disconnect")}
           </button>
         </div>
       </section>
       <section className="wallet-balance-section">
         <div className="wallet-section-heading">
           <div>
-            <p className="eyebrow">Wallet balances</p>
-            <h2>Assets on Robinhood Chain</h2>
+            <p className="eyebrow">{t("wallet.balancesEyebrow")}</p>
+            <h2>{t("wallet.balancesTitle")}</h2>
           </div>
           <button className="wallet-refresh" type="button" onClick={() => void refresh()} disabled={refreshing}>
             <RefreshCw size={15} className={refreshing ? "wallet-spin" : ""} />
-            Refresh
+            {t("wallet.refresh")}
           </button>
         </div>
         {balanceError ? <p className="wallet-inline-error">{balanceError}</p> : null}
@@ -460,15 +462,15 @@ export function WalletPortfolio() {
             <div>
               <span>USDG</span>
               <strong className="mono">{amount(balances.usdg, 6)}</strong>
-              <small>Wallet balance</small>
+              <small>{t("wallet.walletBalance")}</small>
             </div>
           </article>
           <article>
             <TokenIcon token="TOKEN" />
             <div>
-              <span>{BRAND.name} token</span>
+              <span>{t("wallet.brandToken", { brand: BRAND.name })}</span>
               <strong className="mono">{amount(balances.token, balances.tokenDecimals)}</strong>
-              <small>Protocol token</small>
+              <small>{t("wallet.protocolToken")}</small>
             </div>
           </article>
           <article>
@@ -476,7 +478,7 @@ export function WalletPortfolio() {
             <div>
               <span>ETH</span>
               <strong className="mono">{amount(balances.native, 18)}</strong>
-              <small>Network gas</small>
+              <small>{t("wallet.gas")}</small>
             </div>
           </article>
         </div>

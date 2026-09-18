@@ -14,6 +14,8 @@ import { ContractAddress } from "@/components/ContractAddress";
 import { BRAND, CHAIN_NAME } from "@/lib/brand";
 import { VAULT_PINS } from "@/lib/registry";
 import { getLendingMarkets } from "@/server/lending";
+import { getT } from "@/i18n/server";
+import type { TFunction } from "@/i18n";
 import "@/styles/home.css";
 
 export const dynamic = "force-dynamic";
@@ -21,47 +23,33 @@ export const dynamic = "force-dynamic";
 const WALL = VAULT_PINS.slice(0, 16).map((p) => ({ symbol: p.symbol, href: `/vaults/${encodeURIComponent(p.id)}`, name: STOCK_NAMES.find((s) => s.symbol === p.symbol)?.name ?? p.symbol }));
 
 const STACK = [
-  { t: "Robinhood Chain", d: "An Arbitrum-stack L2 where canonical Stock Tokens and USDG settle.", src: "/brands/robinhood-mark.svg" },
-  { t: "Uniswap pools", d: "V3 and V4 pools hold each vault's concentrated position.", src: "/brands/uniswap.svg" },
-  { t: "Chainlink feeds", d: "Price and sequencer feeds gate every rebalance, deposit and borrow.", src: "/brands/chainlink.svg" },
-  { t: "USDG", d: "Every vault and market is denominated in the Global Dollar.", src: "/brands/usdg.png" },
+  { key: "robinhood", src: "/brands/robinhood-mark.svg" },
+  { key: "uniswap", src: "/brands/uniswap.svg" },
+  { key: "chainlink", src: "/brands/chainlink.svg" },
+  { key: "usdg", src: "/brands/usdg.png" },
 ];
 
-const FAQ: FaqItem[] = [
-  {
-    q: `What is a ${BRAND.name} vault?`,
-    a: "An ERC-4626 vault that provides managed liquidity for one USDG / Stock Token pool on Uniswap. You deposit USDG, receive vault shares, and the vault's LP position earns trading fees. Every figure shown is read from the chain.",
-  },
-  {
-    q: "Is my deposit principal-protected?",
-    a: "No. Vault shares are not a stablecoin and are not principal-protected. Their value moves with the Stock Token price and with the fees the position earns. Only the amount needed for the position is invested; leftovers return to your wallet.",
-  },
-  {
-    q: "How is fee APR calculated?",
-    a: "Fee APR is a rolling 24-hour estimate: gross fees earned by the position, after the 30% that goes to buybacks and the protocol treasury, divided by average vault assets. It is an observation of past pool fees, not a forecast, and it starts as a dash until enough samples exist.",
-  },
-  {
-    q: `What does the ${BRAND.name} token do?`,
-    a: `It is the protocol token. 20% of every claimed fee is reserved in USDG until the buyback executor buys the token and verifiably burns it.`,
-  },
-  {
-    q: "Which wallets work?",
-    a: "Any injected EIP-1193 wallet such as MetaMask or Rabby. The site adds Robinhood Chain to your wallet and switches to it automatically when you connect.",
-  },
-  {
-    q: "What happens when the stock market is closed?",
-    a: "Chainlink price and sequencer feeds must be fresh before any rebalance or borrow. When feeds are stale, deposits and borrows wait instead of guessing; redemptions still work.",
-  },
-  {
-    q: "Where can I verify the contracts?",
-    a: (
-      <>
-        Every vault, router, position and lending market address is listed in the{" "}
-        <Link href="/docs#contracts">contracts section of the docs</Link> with links to the Robinhood Chain explorer.
-      </>
-    ),
-  },
-];
+function buildFaq(t: TFunction): FaqItem[] {
+  const vars = { name: BRAND.name };
+  return [
+    { q: t("faq.1.q", vars), a: t("faq.1.a", vars) },
+    { q: t("faq.2.q", vars), a: t("faq.2.a", vars) },
+    { q: t("faq.3.q", vars), a: t("faq.3.a", vars) },
+    { q: t("faq.4.q", vars), a: t("faq.4.a", vars) },
+    { q: t("faq.5.q", vars), a: t("faq.5.a", vars) },
+    { q: t("faq.6.q", vars), a: t("faq.6.a", vars) },
+    {
+      q: t("faq.7.q", vars),
+      a: (
+        <>
+          {t("faq.7.before")}
+          <Link href="/docs#contracts">{t("faq.7.link")}</Link>
+          {t("faq.7.after")}
+        </>
+      ),
+    },
+  ];
+}
 
 function Rails() {
   return (
@@ -90,11 +78,10 @@ function PillRow({ label, tint }: { label: string; tint?: string }) {
   );
 }
 
-function RiskNote({ tone }: { tone?: "dark" | "cta" }) {
+function RiskNote({ t, tone }: { t: TFunction; tone?: "dark" | "cta" }) {
   return (
     <p className={`home-risk${tone ? ` home-risk-${tone}` : ""}`}>
-      Vault shares move with the Stock Token price and are not principal-protected. Fee APR is a 24h observation, not a forecast.{" "}
-      <Link href="/docs#contracts">Verify the contracts</Link>
+      {t("risk.body")} <Link href="/docs#contracts">{t("risk.link")}</Link>
     </p>
   );
 }
@@ -116,8 +103,10 @@ function HatchBand() {
 }
 
 export default async function HomePage() {
+  const t = await getT("home");
   const lending = await getLendingMarkets().catch(() => null);
   const market = lending?.data[0] ?? null;
+  const FAQ = buildFaq(t);
   return (
     <main className="home">
       <SiteHeader />
@@ -131,39 +120,39 @@ export default async function HomePage() {
         <div className="home-hero-inner g-shell">
           <div className="home-hero-top g-reveal">
             <h1>
-              One vault
-              <br className="home-hero-br-m" /> per stock.
+              {t("hero.title1a")}
+              <br className="home-hero-br-m" /> {t("hero.title1b")}
               <br />
-              Fees split
-              <br className="home-hero-br-m" /> onchain.
+              {t("hero.title2a")}
+              <br className="home-hero-br-m" /> {t("hero.title2b")}
             </h1>
           </div>
           <div className="home-hero-art-mobile" aria-hidden="true">
             <HeroOrb className="home-hero-orb" size={360} />
           </div>
           <div className="home-hero-bottom g-reveal g-reveal-2">
-            <p>Managed liquidity vaults for tokenized stocks on {CHAIN_NAME}. Deposit USDG, the vault runs the position, and you share in the trading fees.</p>
+            <p>{t("hero.lede", { chain: CHAIN_NAME })}</p>
             <div className="hex-group">
               <Link className="hex-outline hex-notch hex-md hex-slate" href="/docs">
-                How it works
+                {t("hero.how")}
               </Link>
               <Link className="hex hex-md hex-green" href="/vaults">
-                Start now
+                {t("hero.start")}
               </Link>
             </div>
-            <RiskNote />
+            <RiskNote t={t} />
             <ContractAddress />
           </div>
         </div>
       </section>
 
       <hr className="g-hr" />
-      <PillRow label={`${VAULT_PINS.length} vaults, one per stock`} />
+      <PillRow label={t("wall.pill", { count: VAULT_PINS.length })} />
       <div className="home-wall g-shell">
-        {WALL.map((t) => (
-          <Link key={t.symbol} href={t.href} className="home-wall-cell" aria-label={`${t.name} vault`}>
-            <StockLogo symbol={t.symbol} size={26} />
-            <span>{t.name}</span>
+        {WALL.map((w) => (
+          <Link key={w.symbol} href={w.href} className="home-wall-cell" aria-label={t("wall.aria", { name: w.name })}>
+            <StockLogo symbol={w.symbol} size={26} />
+            <span>{w.name}</span>
           </Link>
         ))}
       </div>
@@ -176,29 +165,26 @@ export default async function HomePage() {
           <Rails />
           <div className="g-section g-head-split">
             <div className="g-tight">
-              <span className="g-label c-lavender">[ VAULTS ]</span>
-              <h2 className="c-lavender">How {BRAND.name} vaults earn</h2>
-              <p className="g-lede c-lavender">
-                Each vault holds one concentrated liquidity position for a single USDG / Stock Token pool, keeps it centred on the Chainlink
-                price, and lets the trading fees compound inside the vault.
-              </p>
+              <span className="g-label c-lavender">{t("vaults.label")}</span>
+              <h2 className="c-lavender">{t("vaults.title", { name: BRAND.name })}</h2>
+              <p className="g-lede c-lavender">{t("vaults.lede")}</p>
             </div>
             <div>
-              <MoreLink href="/docs">Read how vaults earn</MoreLink>
+              <MoreLink href="/docs">{t("vaults.more")}</MoreLink>
             </div>
           </div>
         </section>
         <div className="div-ruler" style={{ color: "rgba(255,207,254,.3)" }} aria-hidden="true" />
         <section className="g-rails" style={{ color: "rgba(255,207,254,.35)" }}>
           <Rails />
-          <PillRow label="How it works" tint="#FFCFFE" />
+          <PillRow label={t("steps.pill")} tint="#FFCFFE" />
           <div className="g-section">
             <div className="home-steps">
               {[
-                { n: "01", t: "Deposit USDG", d: "The router swaps half into the Stock Token and joins the pool in one transaction. Leftovers return to your wallet.", Art: DepositArt },
-                { n: "02", t: "The keeper holds the range", d: "Liquidity stays concentrated around the oracle price; out of range, a rebalance is queued and checked against fresh feeds.", Art: RangeArt },
-                { n: "03", t: "Fees are claimed and split", d: `70% compounds into the position, 20% is reserved to buy back and burn the ${BRAND.name} token and 10% goes to the protocol treasury.`, Art: FeeSplitArt },
-              ].map(({ n, t, d, Art }) => (
+                { n: "01", title: t("steps.1.title"), d: t("steps.1.desc"), Art: DepositArt },
+                { n: "02", title: t("steps.2.title"), d: t("steps.2.desc"), Art: RangeArt },
+                { n: "03", title: t("steps.3.title"), d: t("steps.3.desc", { name: BRAND.name }), Art: FeeSplitArt },
+              ].map(({ n, title, d, Art }) => (
                 <div key={n} className="home-step c-lavender">
                   <div className="g-frame" style={{ color: "#FFCFFE" }}>
                     <div className="div-hatch" />
@@ -214,8 +200,8 @@ export default async function HomePage() {
                     <div className="div-hatch" />
                   </div>
                   <div className="g-frame-caption">
-                    <span className="g-label-xs c-seafoam">Step {n}</span>
-                    <p className="g-sub-xs c-lavender">{t}</p>
+                    <span className="g-label-xs c-seafoam">{t("steps.step", { n })}</span>
+                    <p className="g-sub-xs c-lavender">{title}</p>
                     <p className="g-body c-lavender">{d}</p>
                   </div>
                 </div>
@@ -227,17 +213,17 @@ export default async function HomePage() {
         <section className="g-rails" style={{ color: "rgba(255,207,254,.35)" }}>
           <Rails />
           <div className="g-section g-head g-center">
-            <h2 className="c-lavender">Every vault, live.</h2>
-            <p className="g-lede c-lavender">From TVL and fee APR to the exact LP range, every figure below is read from Robinhood Chain.</p>
+            <h2 className="c-lavender">{t("live.title")}</h2>
+            <p className="g-lede c-lavender">{t("live.lede")}</p>
           </div>
         </section>
         <div className="div-ruler" style={{ color: "rgba(255,207,254,.3)" }} aria-hidden="true" />
         <section className="g-rails" style={{ color: "rgba(255,207,254,.35)" }}>
           <Rails />
-          <PillRow label="Live right now" tint="#FFCFFE" />
+          <PillRow label={t("live.pill")} tint="#FFCFFE" />
           <div className="g-section">
             <LiveVaultCards />
-            <RiskNote tone="dark" />
+            <RiskNote t={t} tone="dark" />
           </div>
         </section>
         <div className="line-fade line-fade-up" aria-hidden="true" />
@@ -246,9 +232,9 @@ export default async function HomePage() {
       {/* ---------------- lending ---------------- */}
       <section className="t-bg">
         <div className="g-section g-head g-center">
-          <span className="g-label c-green">[ LENDING ]</span>
-          <h2>Borrow USDG while your vault keeps earning</h2>
-          <p className="g-lede">Supply USDG for interest paid by borrowers, or pledge eligible vault shares and borrow against them. Each market has its own cash, its own limits and its own oracle.</p>
+          <span className="g-label c-green">{t("lending.label")}</span>
+          <h2>{t("lending.title")}</h2>
+          <p className="g-lede">{t("lending.lede")}</p>
         </div>
         <div className="div-ruler" style={{ color: "var(--border)" }} aria-hidden="true" />
         <div className="g-section-sm g-shell">
@@ -270,11 +256,11 @@ export default async function HomePage() {
                 <div className="div-hatch" />
               </div>
               <div className="g-frame-caption">
-                <span className="g-label-xs">[ SUPPLY ]</span>
-                <p className="g-sub-sm">Lenders earn what borrowers pay</p>
-                <p className="g-body">Supply USDG to a market and earn the borrow rate, net of the reserve factor. Rates follow utilisation and update every block.</p>
+                <span className="g-label-xs">{t("lending.supply.label")}</span>
+                <p className="g-sub-sm">{t("lending.supply.title")}</p>
+                <p className="g-body">{t("lending.supply.desc")}</p>
                 <Link className="hex hex-md hex-slate" href={market ? `/lending/${market.pin.slug}` : "/lending"}>
-                  Supply USDG
+                  {t("lending.supply.cta")}
                 </Link>
               </div>
             </div>
@@ -293,11 +279,11 @@ export default async function HomePage() {
                 <div className="div-hatch" />
               </div>
               <div className="g-frame-caption">
-                <span className="g-label-xs">[ BORROW ]</span>
-                <p className="g-sub-sm">Pledge vault shares, keep the fees</p>
-                <p className="g-body">Vault shares stay invested while they back your loan. Collateral is valued by the market&apos;s onchain adapter and capped per market.</p>
+                <span className="g-label-xs">{t("lending.borrow.label")}</span>
+                <p className="g-sub-sm">{t("lending.borrow.title")}</p>
+                <p className="g-body">{t("lending.borrow.desc")}</p>
                 <Link className="hex hex-md hex-slate" href="/lending">
-                  See markets
+                  {t("lending.borrow.cta")}
                 </Link>
               </div>
             </div>
@@ -309,11 +295,11 @@ export default async function HomePage() {
       <section className="t-bg">
         <div className="g-section g-head-split">
           <div className="g-tight">
-            <h2>Guarded by default.</h2>
-            <p className="g-lede">Oracle checks, caps and a guardian pause on every product. Built for people who read the contracts.</p>
+            <h2>{t("guard.title")}</h2>
+            <p className="g-lede">{t("guard.lede")}</p>
           </div>
           <div>
-            <MoreLink href="/docs#safeguards">Read the safeguards</MoreLink>
+            <MoreLink href="/docs#safeguards">{t("guard.more")}</MoreLink>
           </div>
         </div>
         <div className="div-ruler" style={{ color: "rgba(61,59,79,.2)" }} aria-hidden="true" />
@@ -326,13 +312,13 @@ export default async function HomePage() {
             </div>
             <div className="g-grid home-guard c-slate">
               {[
-                { n: "01", t: "Chainlink oracle checks", d: "Price and sequencer feeds must be fresh before any rebalance or borrow." },
-                { n: "02", t: "Caps and a guardian pause", d: "Vaults, markets and strategies are each capped, pausable and separately auditable." },
-                { n: "03", t: "Verified onchain", d: "Every contract is verified on Blockscout against the reviewed deployment." },
+                { n: "01", title: t("guard.1.title"), d: t("guard.1.desc") },
+                { n: "02", title: t("guard.2.title"), d: t("guard.2.desc") },
+                { n: "03", title: t("guard.3.title"), d: t("guard.3.desc") },
               ].map((c) => (
                 <div key={c.n} className="col-4">
                   <div className="home-guard-card">
-                    <h3>{c.t}</h3>
+                    <h3>{c.title}</h3>
                     <p>{c.d}</p>
                   </div>
                 </div>
@@ -344,11 +330,11 @@ export default async function HomePage() {
         <div className="div-ruler" style={{ color: "rgba(61,59,79,.2)" }} aria-hidden="true" />
         <div className="home-stack-row g-shell">
           {STACK.map((item) => (
-            <div key={item.t} className="home-stack-item">
+            <div key={item.key} className="home-stack-item">
               <Image src={item.src} alt="" width={28} height={28} />
               <span>
-                <b>{item.t}</b>
-                <small>{item.d}</small>
+                <b>{t(`stack.${item.key}.title`)}</b>
+                <small>{t(`stack.${item.key}.desc`)}</small>
               </span>
             </div>
           ))}
@@ -359,10 +345,10 @@ export default async function HomePage() {
 
       {/* ---------------- strategies (in review) ---------------- */}
       <section className="home-strat t-bg">
-        <PillRow label="Strategies" tint="#D1E5FF" />
+        <PillRow label={t("strat.pill")} tint="#D1E5FF" />
         <div className="home-strat-inner g-shell">
-          <p>Two managed strategies, a basket of the highest-earning vaults and a delta-neutral position, are in review and take no deposits yet.</p>
-          <MoreLink href="/strategies">Preview strategies</MoreLink>
+          <p>{t("strat.body")}</p>
+          <MoreLink href="/strategies">{t("strat.more")}</MoreLink>
         </div>
       </section>
 
@@ -374,9 +360,9 @@ export default async function HomePage() {
       <section className="t-bg home-figures-section">
         <div className="home-figures g-shell">
           <div className="home-figures-head">
-            <h2>Protocol figures, read onchain.</h2>
+            <h2>{t("figures.title")}</h2>
             <Link className="hex hex-md hex-slate" href="/status">
-              Open system status
+              {t("figures.status")}
             </Link>
           </div>
           <div className="home-figures-grid">
@@ -399,7 +385,7 @@ export default async function HomePage() {
           ))}
         </div>
         <div className="g-section home-faq-inner">
-          <h2>FAQ</h2>
+          <h2>{t("faq.title")}</h2>
           <FaqAccordion items={FAQ} />
         </div>
       </section>
@@ -413,16 +399,16 @@ export default async function HomePage() {
         </div>
         <div className="home-cta-inner g-grid">
           <div className="col-6 home-cta-copy">
-            <h2 className="c-lime">{BRAND.name} is building the yield layer for tokenized stocks so your USDG can get back to work.</h2>
+            <h2 className="c-lime">{t("cta.title", { name: BRAND.name })}</h2>
             <div className="hex-group">
               <Link className="hex-outline hex-notch hex-md hex-lime" href="/docs">
-                Read the docs
+                {t("cta.docs")}
               </Link>
               <Link className="hex hex-md hex-green" href="/vaults">
-                Start now
+                {t("cta.start")}
               </Link>
             </div>
-            <RiskNote tone="cta" />
+            <RiskNote t={t} tone="cta" />
           </div>
           <div className="col-6 home-cta-visual">
             <CtaArt />

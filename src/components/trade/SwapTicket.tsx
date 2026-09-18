@@ -5,6 +5,8 @@ import { ArrowLeftRight, Check, Crosshair, RefreshCw, Timer, Wallet } from "luci
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { encodeFunctionData, formatUnits, isAddress, parseUnits, type Address, type Hex } from "viem";
 import { useWallet } from "@/components/wallet/WalletProvider";
+import { useT } from "@/i18n/client";
+import type { TFunction } from "@/i18n";
 import { erc20Abi } from "@/lib/abis";
 import { BRAND } from "@/lib/brand";
 import { explorerTx, publicClient, robinhoodChain } from "@/lib/chain";
@@ -25,6 +27,9 @@ const fmtAmount = (raw: bigint | string | null | undefined, decimals: number) =>
   return n.toLocaleString(undefined, { maximumSignificantDigits: 7 });
 };
 
+/** Translated display name; imported tokens keep the on-chain name. */
+const tokenName = (t: TFunction, asset: TradeToken) => (asset.nameKey ? t(asset.nameKey, { name: asset.baseName ?? asset.symbol, brand: BRAND.name }) : asset.name);
+
 function TokenMark({ asset }: { asset: TradeToken }) {
   const src = asset.logoUrl || (asset.native ? "/brands/eth.svg" : "");
   // eslint-disable-next-line @next/next/no-img-element
@@ -32,12 +37,13 @@ function TokenMark({ asset }: { asset: TradeToken }) {
 }
 
 function TokenButton({ asset, onClick }: { asset: TradeToken; onClick: () => void }) {
+  const t = useT("trade");
   return (
     <button className={styles.tokenButton} type="button" onClick={onClick}>
       <TokenMark asset={asset} />
       <span>
         <b>{asset.symbol}</b>
-        <small>{asset.name}</small>
+        <small>{tokenName(t, asset)}</small>
       </span>
       <i aria-hidden="true">⌄</i>
     </button>
@@ -45,6 +51,7 @@ function TokenButton({ asset, onClick }: { asset: TradeToken; onClick: () => voi
 }
 
 function TokenPicker({ title, tokens, excluded, onSelect, onClose, onImport }: { title: string; tokens: TradeToken[]; excluded?: string; onSelect: (t: TradeToken) => void; onClose: () => void; onImport: (t: TradeToken) => void }) {
+  const t = useT("trade");
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState<"all" | "core" | "stock">("all");
   const [error, setError] = useState("");
@@ -69,7 +76,7 @@ function TokenPicker({ title, tokens, excluded, onSelect, onClose, onImport }: {
       onSelect(token);
       onClose();
     } catch {
-      setError("The token could not be imported.");
+      setError(t("picker.importError"));
     } finally {
       setBusy(false);
     }
@@ -79,51 +86,51 @@ function TokenPicker({ title, tokens, excluded, onSelect, onClose, onImport }: {
       <section className={styles.picker} role="dialog" aria-modal="true" aria-label={title} onClick={(e) => e.stopPropagation()}>
         <header>
           <div>
-            <span>ROBINHOOD CHAIN</span>
+            <span>{t("picker.chain")}</span>
             <h2>{title}</h2>
           </div>
-          <button type="button" onClick={onClose} aria-label="Close">
+          <button type="button" onClick={onClose} aria-label={t("picker.close")}>
             ×
           </button>
         </header>
         <label className={styles.search}>
           <span aria-hidden="true">⌕</span>
-          <input autoFocus placeholder="Search name, symbol or paste an address" value={query} onChange={(e) => setQuery(e.target.value)} aria-label="Search tokens" />
+          <input autoFocus placeholder={t("picker.searchPlaceholder")} value={query} onChange={(e) => setQuery(e.target.value)} aria-label={t("picker.searchAria")} />
         </label>
         <div className={styles.filters}>
           {(["all", "core", "stock"] as const).map((c) => (
             <button key={c} type="button" className={category === c ? styles.activeFilter : ""} onClick={() => setCategory(c)}>
-              {c === "all" ? "All" : c === "core" ? "CRYPTO" : "Stock Tokens"}
+              {c === "all" ? t("picker.filter.all") : c === "core" ? t("picker.filter.core") : t("picker.filter.stock")}
             </button>
           ))}
         </div>
         <div className={styles.tokenList}>
           {list
-            .filter((t) => t.address.toLowerCase() !== excluded?.toLowerCase())
-            .map((t) => (
-              <button key={t.address} type="button" onClick={() => onSelect(t)}>
-                <TokenMark asset={t} />
+            .filter((tok) => tok.address.toLowerCase() !== excluded?.toLowerCase())
+            .map((tok) => (
+              <button key={tok.address} type="button" onClick={() => onSelect(tok)}>
+                <TokenMark asset={tok} />
                 <span>
-                  <b>{t.symbol}</b>
-                  <small>{t.name}</small>
+                  <b>{tok.symbol}</b>
+                  <small>{tokenName(t, tok)}</small>
                 </span>
-                <em>{t.category === "stock" ? "Stock Token" : t.category === "imported" ? "Imported" : "Crypto"}</em>
+                <em>{tok.category === "stock" ? t("picker.cat.stock") : tok.category === "imported" ? t("picker.cat.imported") : t("picker.cat.crypto")}</em>
               </button>
             ))}
           {importable ? (
             <button type="button" className={styles.importToken} disabled={busy} onClick={() => void importToken()}>
               <span>＋</span>
               <span>
-                <b>{busy ? "Importing…" : "Import token"}</b>
+                <b>{busy ? t("picker.importing") : t("picker.import")}</b>
                 <small>{importable}</small>
               </span>
             </button>
           ) : null}
-          {!list.length && !importable ? <p>No matching token. Paste its Robinhood Chain contract address to import it.</p> : null}
+          {!list.length && !importable ? <p>{t("picker.noMatch")}</p> : null}
         </div>
         {error ? <p className={styles.pickerError}>{error}</p> : null}
         <footer>
-          <small>Imported tokens are read from the chain and are not reviewed. Check the contract before trading.</small>
+          <small>{t("picker.footer")}</small>
         </footer>
       </section>
     </div>
@@ -133,6 +140,7 @@ function TokenPicker({ title, tokens, excluded, onSelect, onClose, onImport }: {
 const MIN_GAS_RESERVE = 100_000_000_000_000n; // 0.0001 ETH
 
 export function SwapTicket() {
+  const t = useT("trade");
   const { address: owner, ready, connect, walletClient, chainId, switchChain } = useWallet();
   const [tokens, setTokens] = useState<TradeToken[]>(TRADE_TOKENS);
   const [tokenIn, setTokenIn] = useState<TradeToken>(TRADE_TOKENS[0]);
@@ -177,10 +185,10 @@ export function SwapTicket() {
 
   useEffect(() => {
     void readBalance();
-    const t = setInterval(readBalance, 15_000);
+    const timer = setInterval(readBalance, 15_000);
     window.addEventListener("focus", readBalance);
     return () => {
-      clearInterval(t);
+      clearInterval(timer);
       window.removeEventListener("focus", readBalance);
     };
   }, [readBalance]);
@@ -202,36 +210,36 @@ export function SwapTicket() {
     const ctrl = new AbortController();
     setQuoting(true);
     setQuoteError("");
-    const t = setTimeout(async () => {
+    const timer = setTimeout(async () => {
       try {
         const params = new URLSearchParams({ tokenIn: tokenIn.address, tokenOut: tokenOut.address, amountIn: amountRaw.toString() });
         const res = await fetch(`/api/trade/quotes?${params}`, { cache: "no-store", signal: ctrl.signal });
         const json = (await res.json()) as { data?: QuotesResponse; error?: string };
-        if (!res.ok || !json.data) throw new Error(json.error || "Quotes are temporarily unavailable.");
+        if (!res.ok || !json.data) throw new Error(json.error || t("quote.unavailable"));
         if (ctrl.signal.aborted) return;
         setQuotes(json.data);
         setCountdown(10);
         setSelected((s) => (s && json.data!.quotes.some((q) => q.providerId === s) ? s : json.data!.quotes[0]?.providerId ?? null));
-        if (!json.data.quotes.length) setQuoteError("No route is available for this amount. Try another token pair or amount.");
+        if (!json.data.quotes.length) setQuoteError(t("quote.noRoute"));
       } catch {
         if (!ctrl.signal.aborted) {
           setQuotes(null);
-          setQuoteError("Quotes are temporarily unavailable. Please try again.");
+          setQuoteError(t("quote.retry"));
         }
       } finally {
         if (!ctrl.signal.aborted) setQuoting(false);
       }
     }, 350);
     return () => {
-      clearTimeout(t);
+      clearTimeout(timer);
       ctrl.abort();
     };
-  }, [amountRaw, tokenIn.address, tokenOut.address, refreshTick, busy]);
+  }, [amountRaw, tokenIn.address, tokenOut.address, refreshTick, busy, t]);
 
   useEffect(() => {
     if (!quotes || busy) return;
-    const t = setInterval(() => setCountdown((c) => Math.max(0, c - 1)), 1000);
-    return () => clearInterval(t);
+    const timer = setInterval(() => setCountdown((c) => Math.max(0, c - 1)), 1000);
+    return () => clearInterval(timer);
   }, [quotes, busy]);
   useEffect(() => {
     if (countdown === 0 && quotes && !busy) {
@@ -259,18 +267,18 @@ export function SwapTicket() {
     setBusy(true);
     setError("");
     setHash(null);
-    setMessage("Preparing your swap…");
+    setMessage(t("swap.preparing"));
     try {
       if (chainId !== robinhoodChain.id) await switchChain();
       const res = await fetch("/api/trade/build", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ routeSummary: quote.routeSummary, sender: owner, recipient: owner, slippageBps }) });
       const json = (await res.json()) as { data?: { data: Hex; routerAddress: Address; amountOut: string }; error?: string };
-      if (!res.ok || !json.data) throw new Error(json.error || "The swap could not be prepared.");
+      if (!res.ok || !json.data) throw new Error(json.error || t("swap.buildFailed"));
       const client = publicClient();
       const router = json.data.routerAddress;
       if (!tokenIn.native) {
         const allowance = await client.readContract({ address: tokenIn.address as Address, abi: erc20Abi, functionName: "allowance", args: [owner, router] });
         if (allowance < amountRaw) {
-          setMessage("Approve the token in your wallet.");
+          setMessage(t("swap.approve"));
           const data = encodeFunctionData({ abi: erc20Abi, functionName: "approve", args: [router, amountRaw] });
           const tx = await walletClient.sendTransaction({ account: owner, chain: robinhoodChain, to: tokenIn.address as Address, data });
           await client.waitForTransactionReceipt({ hash: tx });
@@ -278,13 +286,13 @@ export function SwapTicket() {
       }
       const value = tokenIn.native ? amountRaw : 0n;
       const gas = await client.estimateGas({ account: owner, to: router, data: json.data.data, value });
-      setMessage("Confirm the swap in your wallet.");
+      setMessage(t("swap.confirm"));
       const tx = await walletClient.sendTransaction({ account: owner, chain: robinhoodChain, to: router, data: json.data.data, value, gas: (gas * 125n + 99n) / 100n });
       setHash(tx);
-      setMessage("Waiting for confirmation…");
+      setMessage(t("swap.waiting"));
       const receipt = await client.waitForTransactionReceipt({ hash: tx, timeout: 120_000 });
-      if (receipt.status !== "success") throw new Error("Swap reverted; no tokens moved.");
-      setMessage(`Swap confirmed. You received about ${fmtAmount(json.data.amountOut, tokenOut.decimals)} ${tokenOut.symbol}.`);
+      if (receipt.status !== "success") throw new Error(t("swap.reverted"));
+      setMessage(t("swap.confirmed", { amount: fmtAmount(json.data.amountOut, tokenOut.decimals), symbol: tokenOut.symbol }));
       setAmount("");
       await readBalance();
     } catch (e) {
@@ -297,10 +305,10 @@ export function SwapTicket() {
   }
 
   const providerState = (id: string): { label: string; state?: string } => {
-    if (quoting) return { label: "Comparing", state: "pending" };
-    if (!quotes) return { label: "Ready to compare" };
-    if (id === "kyber") return quotes.quotes.some((q) => q.providerId === id) ? { label: "Quote ready", state: "available" } : { label: "No route", state: "no-route" };
-    return { label: "Unavailable", state: "not-configured" };
+    if (quoting) return { label: t("provider.comparing"), state: "pending" };
+    if (!quotes) return { label: t("provider.ready") };
+    if (id === "kyber") return quotes.quotes.some((q) => q.providerId === id) ? { label: t("provider.quoteReady"), state: "available" } : { label: t("provider.noRoute"), state: "no-route" };
+    return { label: t("provider.unavailable"), state: "not-configured" };
   };
 
   return (
@@ -308,17 +316,17 @@ export function SwapTicket() {
       <section className={styles.ticket}>
         <header className={styles.ticketHead}>
           <div>
-            <h2>Swap</h2>
-            <p>Best price across four Robinhood Chain aggregators.</p>
+            <h2>{t("ticket.title")}</h2>
+            <p>{t("ticket.subtitle")}</p>
           </div>
-          <span className={`${styles.status} ${quoting ? styles.pending : ""}`}>{quoting ? "Quoting" : "Ready"}</span>
+          <span className={`${styles.status} ${quoting ? styles.pending : ""}`}>{quoting ? t("ticket.quoting") : t("ticket.ready")}</span>
         </header>
         <fieldset className={styles.tradeFields} disabled={busy}>
           <div className={styles.pairFields}>
             <div className={styles.field}>
-              <span>You pay</span>
+              <span>{t("ticket.youPay")}</span>
               <div className={styles.assetField}>
-                <input inputMode="decimal" placeholder="0.00" aria-label="Input amount" aria-invalid={exceedsBalance || tooPrecise} aria-describedby="balance-feedback" value={amount} onChange={(e) => /^\d*(\.\d*)?$/.test(e.target.value) && setAmount(e.target.value)} />
+                <input inputMode="decimal" placeholder="0.00" aria-label={t("ticket.inputAria")} aria-invalid={exceedsBalance || tooPrecise} aria-describedby="balance-feedback" value={amount} onChange={(e) => /^\d*(\.\d*)?$/.test(e.target.value) && setAmount(e.target.value)} />
                 <TokenButton asset={tokenIn} onClick={() => setPicker("in")} />
               </div>
               <div className={styles.balanceRow}>
@@ -326,12 +334,12 @@ export function SwapTicket() {
                   <>
                     <span>
                       <Wallet size={14} strokeWidth={1.5} aria-hidden="true" />
-                      Balance {bal ? fmtAmount(bal.value, tokenIn.decimals) : "…"} {tokenIn.symbol}
+                      {t("ticket.balance")} {bal ? fmtAmount(bal.value, tokenIn.decimals) : "…"} {tokenIn.symbol}
                     </span>
                     <span className={styles.amountShortcuts}>
                       {[25, 50, 100].map((p) => (
                         <button key={p} type="button" disabled={spendable === null} onClick={() => spendable !== null && setAmount(formatUnits((spendable * BigInt(p)) / 100n, tokenIn.decimals))}>
-                          {p === 100 ? "Max" : `${p}%`}
+                          {p === 100 ? t("ticket.max") : `${p}%`}
                         </button>
                       ))}
                     </span>
@@ -339,60 +347,60 @@ export function SwapTicket() {
                 ) : (
                   <span>
                     <Wallet size={14} strokeWidth={1.5} aria-hidden="true" />
-                    Connect to see balance
+                    {t("ticket.connectToSee")}
                   </span>
                 )}
               </div>
               <div id="balance-feedback" className={styles.balanceFeedback} aria-live="polite">
-                {tooPrecise ? <span className={styles.balanceError}>Too many decimals for {tokenIn.symbol}.</span> : exceedsBalance ? <span className={styles.balanceError}>Amount exceeds your balance.</span> : needsGas ? <span className={styles.balanceError}>Leave some ETH for the network fee. Use Max to adjust.</span> : null}
+                {tooPrecise ? <span className={styles.balanceError}>{t("ticket.tooPrecise", { symbol: tokenIn.symbol })}</span> : exceedsBalance ? <span className={styles.balanceError}>{t("ticket.exceeds")}</span> : needsGas ? <span className={styles.balanceError}>{t("ticket.needsGas")}</span> : null}
               </div>
             </div>
-            <button className={styles.flip} type="button" aria-label="Flip token pair" onClick={flip}>
+            <button className={styles.flip} type="button" aria-label={t("ticket.flipAria")} onClick={flip}>
               ↓
             </button>
             <div className={styles.field}>
-              <span>You receive</span>
+              <span>{t("ticket.youReceive")}</span>
               <div className={styles.assetField}>
                 <strong className={styles.output}>{quote ? fmtAmount(quote.netAmountOutRaw, tokenOut.decimals) : "–"}</strong> <TokenButton asset={tokenOut} onClick={() => setPicker("out")} />
               </div>
             </div>
           </div>
           <div className={styles.slippage}>
-            <span>Slippage tolerance</span>
+            <span>{t("ticket.slippage")}</span>
             {["0.1", "0.5", "1.0"].map((s) => (
               <button key={s} type="button" className={slippage === s ? styles.activeFilter : ""} onClick={() => setSlippage(s)}>
                 {s}%
               </button>
             ))}
             <label>
-              <input inputMode="decimal" aria-label="Custom slippage" value={slippage} onChange={(e) => /^\d*(\.\d*)?$/.test(e.target.value) && setSlippage(e.target.value)} />
+              <input inputMode="decimal" aria-label={t("ticket.customSlippage")} value={slippage} onChange={(e) => /^\d*(\.\d*)?$/.test(e.target.value) && setSlippage(e.target.value)} />
               <b>%</b>
             </label>
           </div>
           <dl className={styles.executionDetails}>
             <div>
-              <dt>Minimum received</dt>
+              <dt>{t("ticket.minReceived")}</dt>
               <dd>{quote ? `${fmtAmount(minReceived, tokenOut.decimals)} ${tokenOut.symbol}` : "–"}</dd>
             </div>
             <div>
-              <dt>Rate</dt>
+              <dt>{t("ticket.rate")}</dt>
               <dd>{rate !== null ? `1 ${tokenIn.symbol} ≈ ${rate.toLocaleString(undefined, { maximumSignificantDigits: 6 })} ${tokenOut.symbol}` : "–"}</dd>
             </div>
             <div>
-              <dt>Selected route</dt>
-              <dd>{quote ? `${quote.providerName}${quotes ? ` · refresh in ${countdown}s` : ""}` : quoting ? "Comparing aggregators" : "Comparing aggregators"}</dd>
+              <dt>{t("ticket.selectedRoute")}</dt>
+              <dd>{quote ? `${quote.providerName}${quotes ? ` · ${t("ticket.refreshIn", { seconds: countdown })}` : ""}` : t("ticket.comparing")}</dd>
             </div>
           </dl>
         </fieldset>
         {quoteError ? <p className={`${styles.message} ${styles.error}`}>{quoteError}</p> : null}
         {owner ? (
           <button className={`btn btn-primary ${styles.submit}`} type="button" disabled={!canSwap || busy} onClick={() => void swap()}>
-            {busy ? "Working…" : quote && !quote.executable ? "Route not executable" : "Swap"}
+            {busy ? t("ticket.working") : quote && !quote.executable ? t("ticket.notExecutable") : t("ticket.swap")}
           </button>
         ) : (
           <button className="wallet-button wallet-button-large" type="button" disabled={!ready} onClick={() => void connect()}>
             <Wallet size={18} strokeWidth={1.5} aria-hidden="true" />
-            Connect wallet
+            {t("ticket.connect")}
           </button>
         )}
         {message ? (
@@ -400,7 +408,7 @@ export function SwapTicket() {
             {message}{" "}
             {hash ? (
               <a href={explorerTx(hash)} target="_blank" rel="noreferrer">
-                View transaction ↗
+                {t("ticket.viewTx")}
               </a>
             ) : null}
           </p>
@@ -410,14 +418,14 @@ export function SwapTicket() {
       <aside className={styles.providers} aria-labelledby="provider-title">
         <header>
           <div>
-            <p className="eyebrow">Route competition</p>
-            <h3 id="provider-title">Compare every quote</h3>
+            <p className="eyebrow">{t("providers.eyebrow")}</p>
+            <h3 id="provider-title">{t("providers.title")}</h3>
           </div>
           <div className={styles.quoteFreshness}>
-            <span>{PROVIDERS.length} providers</span>
-            <button type="button" disabled={!quotes || quoting} aria-label="Refresh quotes now" title="Refresh quotes now" onClick={() => setRefreshTick((t) => t + 1)}>
+            <span>{t("providers.count", { count: PROVIDERS.length })}</span>
+            <button type="button" disabled={!quotes || quoting} aria-label={t("providers.refreshNow")} title={t("providers.refreshNow")} onClick={() => setRefreshTick((n) => n + 1)}>
               <RefreshCw size={14} aria-hidden="true" />
-              Refresh
+              {t("providers.refresh")}
             </button>
           </div>
         </header>
@@ -431,8 +439,8 @@ export function SwapTicket() {
                 </span>
               ))}
             </div>
-            <b>{quoting ? "Finding your best route" : "Four providers. One best price."}</b>
-            <p>{quoting ? "Comparing live prices for your trade." : "Enter an amount to compare what you’ll receive."}</p>
+            <b>{quoting ? t("providers.finding") : t("providers.fourOne")}</b>
+            <p>{quoting ? t("providers.comparingLive") : t("providers.enterAmount")}</p>
           </div>
         ) : null}
         <div className={styles.quoteList}>
@@ -447,14 +455,14 @@ export function SwapTicket() {
                 </span>
                 <span className={styles.quoteIdentity}>
                   <b>{q.providerName}</b>
-                  <small>{q.note ?? "Aggregated liquidity"}</small>
+                  <small>{q.note ?? t("providers.aggregated")}</small>
                 </span>
                 <span className={styles.quoteValue}>
-                  {i === 0 ? <strong>BEST RETURN</strong> : null}
+                  {i === 0 ? <strong>{t("providers.best")}</strong> : null}
                   <b>
                     {fmtAmount(q.netAmountOutRaw, tokenOut.decimals)} <small>{tokenOut.symbol}</small>
                   </b>
-                  <small>{q.executable ? (isSelected ? "Selected route" : "Select route") : "Quote only"}</small>
+                  <small>{q.executable ? (isSelected ? t("providers.selected") : t("providers.select")) : t("providers.quoteOnly")}</small>
                 </span>
                 <span className={styles.quoteCheck} aria-hidden="true">
                   {isSelected ? <Check size={12} /> : null}
@@ -483,11 +491,11 @@ export function SwapTicket() {
             );
           })}
         </div>
-        <p className={styles.providerFootnote}>Quotes include the protocol fee. Network fees are separate.</p>
+        <p className={styles.providerFootnote}>{t("providers.footnote")}</p>
       </aside>
       {picker ? (
         <TokenPicker
-          title={picker === "in" ? "You pay" : "You receive"}
+          title={picker === "in" ? t("ticket.youPay") : t("ticket.youReceive")}
           tokens={tokens}
           excluded={picker === "in" ? tokenOut.address : tokenIn.address}
           onImport={(t) => setTokens((list) => (list.some((x) => x.address.toLowerCase() === t.address.toLowerCase()) ? list : [...list, t]))}
@@ -510,40 +518,41 @@ export function SwapTicket() {
 }
 
 export function TradeShell({ children }: { children: React.ReactNode }) {
+  const t = useT("trade");
   return (
     <div className={`wrap ${styles.shell}`}>
       <section className={`masthead masthead-bleed ${styles.tradeMast}`}>
         <div className={`masthead-inner ${styles.tradeHead}`}>
           <div className={styles.tradeIntro}>
-            <p className="eyebrow">{BRAND.name} Trade · Robinhood Chain</p>
+            <p className="eyebrow">{t("shell.eyebrow", { brand: BRAND.name })}</p>
             <h1>
-              Trade any token, <em className="serif">your way</em>.
+              {t("shell.title.before")}<em className="serif">{t("shell.title.em")}</em>{t("shell.title.after")}
             </h1>
-            <p>Compare live aggregators, wait for a target price, or spread execution across a schedule.</p>
+            <p>{t("shell.intro")}</p>
           </div>
-          <nav className={styles.nav} aria-label="Trading tools">
+          <nav className={styles.nav} aria-label={t("shell.nav.aria")}>
             <Link aria-current="page" href="/trade/swap">
               <span className={styles.navNumber}>01</span>
               <ArrowLeftRight size={18} aria-hidden="true" />
               <span>
-                <strong>Swap</strong>
-                <small>Best of four routes</small>
+                <strong>{t("shell.nav.swap")}</strong>
+                <small>{t("shell.nav.swapDesc")}</small>
               </span>
             </Link>
             <button type="button" disabled>
               <span className={styles.navNumber}>02</span>
               <Crosshair size={18} aria-hidden="true" />
               <span>
-                <strong>Limit</strong>
-                <small>Coming Soon</small>
+                <strong>{t("shell.nav.limit")}</strong>
+                <small>{t("shell.nav.comingSoon")}</small>
               </span>
             </button>
             <button type="button" disabled>
               <span className={styles.navNumber}>03</span>
               <Timer size={18} aria-hidden="true" />
               <span>
-                <strong>TWAP</strong>
-                <small>Coming Soon</small>
+                <strong>{t("shell.nav.twap")}</strong>
+                <small>{t("shell.nav.comingSoon")}</small>
               </span>
             </button>
           </nav>

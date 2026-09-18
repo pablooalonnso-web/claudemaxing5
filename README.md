@@ -73,6 +73,10 @@ lending market, swap routing, and every page and API. It writes `public/verifica
 and a Markdown copy under `verification/`. `--no-site` skips the site checks, `--site <url>` targets another deployment,
 `--build` adds typecheck and lint. This is a functional check, not a third-party security audit.
 
+## Languages
+
+The interface ships in English, Spanish, Simplified Chinese, French and German. The switcher sits in the header (and in the mobile menu and footer); the choice is stored in a `vertex-lang` cookie, and first-time visitors get the language their browser asks for. Messages live in `src/i18n/messages/<namespace>.ts`, one table per language, with English as the fallback for any missing key. Chain data, the intelligence brief and the verification report stay in English because they are generated, not written.
+
 ## Configuration
 
 See `.env.example`. Everything works with defaults; the variables let you point at another RPC, an upstream snapshot API,

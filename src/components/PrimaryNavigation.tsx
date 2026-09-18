@@ -7,26 +7,40 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import { WalletConnectButton } from "./wallet/WalletConnectButton";
 import { ContractAddress } from "./ContractAddress";
 import { LanguageSwitcher } from "./LanguageSwitcher";
+import { useT } from "@/i18n/client";
+import type { TFunction } from "@/i18n";
 
 type Item = { href: string; label: string; blurb: string; icon: ReactNode; badge?: string };
+/** Static shape of a menu entry; labels, blurbs and badges resolve through `t` at render time. */
+type ItemDef = { href: string; key: string; icon: ReactNode; badge?: "new" | "beta" };
 
-const PRODUCTS: Item[] = [
-  { href: "/vaults", label: "Vaults", blurb: "Managed liquidity for one Stock Token each.", icon: <Vault size={18} strokeWidth={1.5} /> },
-  { href: "/lending", label: "Lending", blurb: "Supply USDG or borrow against vault shares.", icon: <Layers size={18} strokeWidth={1.5} /> },
-  { href: "/strategies", label: "Strategies", blurb: "The basket and a one-flow exit.", icon: <Repeat size={18} strokeWidth={1.5} /> },
-  { href: "/trade/swap", label: "Trade", blurb: "Best route across four aggregators.", icon: <ArrowLeftRight size={18} strokeWidth={1.5} /> },
-  { href: "/zap", label: "Zap", blurb: "Any token, straight into a vault.", icon: <Zap size={18} strokeWidth={1.5} />, badge: "New" },
-  { href: "/intelligence", label: "Intelligence", blurb: "Live signals, a written brief and a question box.", icon: <Radar size={18} strokeWidth={1.5} />, badge: "Beta" },
-  { href: "/portfolio", label: "Portfolio", blurb: "Balances, positions and transfers.", icon: <WalletCards size={18} strokeWidth={1.5} /> },
+const PRODUCT_DEFS: ItemDef[] = [
+  { href: "/vaults", key: "vaults", icon: <Vault size={18} strokeWidth={1.5} /> },
+  { href: "/lending", key: "lending", icon: <Layers size={18} strokeWidth={1.5} /> },
+  { href: "/strategies", key: "strategies", icon: <Repeat size={18} strokeWidth={1.5} /> },
+  { href: "/trade/swap", key: "trade", icon: <ArrowLeftRight size={18} strokeWidth={1.5} /> },
+  { href: "/zap", key: "zap", icon: <Zap size={18} strokeWidth={1.5} />, badge: "new" },
+  { href: "/intelligence", key: "intelligence", icon: <Radar size={18} strokeWidth={1.5} />, badge: "beta" },
+  { href: "/portfolio", key: "portfolio", icon: <WalletCards size={18} strokeWidth={1.5} /> },
 ];
 
-const RESOURCES: Item[] = [
-  { href: "/docs", label: "Docs", blurb: "How vaults, fees and safeguards work.", icon: <BookOpen size={18} strokeWidth={1.5} /> },
-  { href: "/help", label: "Help center", blurb: "Answers, searchable.", icon: <LifeBuoy size={18} strokeWidth={1.5} /> },
-  { href: "/status", label: "System status", blurb: "API, oracle, vault and keeper health.", icon: <Activity size={18} strokeWidth={1.5} /> },
-  { href: "/docs#flywheel", label: "Token flywheel", blurb: "Where every fee goes.", icon: <Sparkles size={18} strokeWidth={1.5} /> },
-  { href: "/help/contact", label: "Contact", blurb: "Talk to the team.", icon: <BarChart3 size={18} strokeWidth={1.5} /> },
+const RESOURCE_DEFS: ItemDef[] = [
+  { href: "/docs", key: "docs", icon: <BookOpen size={18} strokeWidth={1.5} /> },
+  { href: "/help", key: "help", icon: <LifeBuoy size={18} strokeWidth={1.5} /> },
+  { href: "/status", key: "status", icon: <Activity size={18} strokeWidth={1.5} /> },
+  { href: "/docs#flywheel", key: "flywheel", icon: <Sparkles size={18} strokeWidth={1.5} /> },
+  { href: "/help/contact", key: "contact", icon: <BarChart3 size={18} strokeWidth={1.5} /> },
 ];
+
+function resolveItems(t: TFunction, group: "products" | "resources", defs: ItemDef[]): Item[] {
+  return defs.map((d) => ({
+    href: d.href,
+    icon: d.icon,
+    label: t(`${group}.${d.key}.label`),
+    blurb: t(`${group}.${d.key}.blurb`),
+    badge: d.badge ? t(`badge.${d.badge}`) : undefined,
+  }));
+}
 
 function isCurrent(pathname: string, href: string) {
   const [path] = href.split("#");
@@ -78,26 +92,29 @@ function Dropdown({ label, items, pathname }: { label: string; items: Item[]; pa
 }
 
 export function PrimaryNavigation() {
+  const t = useT("nav");
   const pathname = usePathname() ?? "/";
   const [open, setOpen] = useState(false);
   useEffect(() => setOpen(false), [pathname]);
+  const PRODUCTS = resolveItems(t, "products", PRODUCT_DEFS);
+  const RESOURCES = resolveItems(t, "resources", RESOURCE_DEFS);
   return (
     <>
-      <nav className="gh-nav" aria-label="Primary navigation">
+      <nav className="gh-nav" aria-label={t("aria.primary")}>
         <Link className="gh-link" href="/vaults" aria-current={isCurrent(pathname, "/vaults") ? "page" : undefined}>
-          Vaults
+          {t("products.vaults.label")}
         </Link>
         <Link className="gh-link" href="/lending" aria-current={isCurrent(pathname, "/lending") ? "page" : undefined}>
-          Lending
+          {t("products.lending.label")}
         </Link>
-        <Dropdown label="Products" items={PRODUCTS} pathname={pathname} />
+        <Dropdown label={t("group.products")} items={PRODUCTS} pathname={pathname} />
         <Link className="gh-link" href="/trade/swap" aria-current={isCurrent(pathname, "/trade/swap") ? "page" : undefined}>
-          Trade
+          {t("products.trade.label")}
         </Link>
         <Link className="gh-link" href="/docs" aria-current={isCurrent(pathname, "/docs") ? "page" : undefined}>
-          Docs
+          {t("resources.docs.label")}
         </Link>
-        <Dropdown label="Resources" items={RESOURCES} pathname={pathname} />
+        <Dropdown label={t("group.resources")} items={RESOURCES} pathname={pathname} />
       </nav>
       <div className="gh-actions">
         <LanguageSwitcher />
@@ -113,21 +130,21 @@ export function PrimaryNavigation() {
           type="button"
           aria-expanded={open}
           aria-controls="mobile-primary-navigation"
-          aria-label={open ? "Close menu" : "Open menu"}
+          aria-label={open ? t("aria.closeMenu") : t("aria.openMenu")}
           onClick={() => setOpen((v) => !v)}
         >
           {open ? <X size={22} strokeWidth={1.5} /> : <Menu size={22} strokeWidth={1.5} />}
         </button>
       </div>
       {open ? (
-        <nav id="mobile-primary-navigation" className="gh-mobile" aria-label="Primary navigation">
-          <span className="gh-mobile-group">Products</span>
+        <nav id="mobile-primary-navigation" className="gh-mobile" aria-label={t("aria.primary")}>
+          <span className="gh-mobile-group">{t("group.products")}</span>
           {PRODUCTS.map((it) => (
             <Link key={it.href} href={it.href} aria-current={isCurrent(pathname, it.href) ? "page" : undefined}>
               {it.label}
             </Link>
           ))}
-          <span className="gh-mobile-group">Resources</span>
+          <span className="gh-mobile-group">{t("group.resources")}</span>
           {RESOURCES.map((it) => (
             <Link key={it.href} href={it.href}>
               {it.label}

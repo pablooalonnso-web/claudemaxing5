@@ -3,10 +3,12 @@
 import Link from "next/link";
 import { ChevronDown } from "lucide-react";
 import { useState, type ReactNode } from "react";
+import { useT } from "@/i18n/client";
 
 export type FaqItem = { q: string; a: ReactNode };
 
 export function FaqAccordion({ items }: { items: FaqItem[] }) {
+  const t = useT("home");
   const [open, setOpen] = useState<number | null>(null);
   return (
     <div className="home-faq">
@@ -29,7 +31,9 @@ export function FaqAccordion({ items }: { items: FaqItem[] }) {
         );
       })}
       <p className="home-faq-more">
-        Can&apos;t find your answer here? <Link href="/help">Search the help center</Link>.
+        {t("faq.more.before")}
+        <Link href="/help">{t("faq.more.link")}</Link>
+        {t("faq.more.after")}
       </p>
     </div>
   );

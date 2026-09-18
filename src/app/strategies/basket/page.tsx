@@ -5,15 +5,20 @@ import { SiteFooter } from "@/components/SiteFooter";
 import { SiteHeader } from "@/components/SiteHeader";
 import { BasketExit } from "@/components/strategies/BasketExit";
 import { BasketStrategy } from "@/components/strategies/BasketStrategy";
+import { getT } from "@/i18n/server";
 import { BRAND } from "@/lib/brand";
 import "@/styles/strategies.css";
 
-export const metadata: Metadata = {
-  title: `Volatile basket · ${BRAND.name}`,
-  description: "One USDG deposit spread across the top vaults by realized fee APR. You sign every step; rotation is suggested, never automatic.",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getT("strategies");
+  return {
+    title: `${t("page.metaTitle")} · ${BRAND.name}`,
+    description: t("page.metaDescription"),
+  };
+}
 
-export default function BasketPage() {
+export default async function BasketPage() {
+  const t = await getT("strategies");
   return (
     <main className="app-page">
       <SiteHeader />
@@ -23,35 +28,33 @@ export default function BasketPage() {
             <div className="masthead-title">
               <p className="eyebrow">
                 <Link href="/strategies" className="masthead-back">
-                  <ArrowLeft size={13} aria-hidden="true" /> Strategies
+                  <ArrowLeft size={13} aria-hidden="true" /> {t("page.back")}
                 </Link>
               </p>
               <h1>
-                The top vaults, <em className="serif">in one deposit.</em>
+                {t("page.title.before")}
+                <em className="serif">{t("page.title.em")}</em>
               </h1>
             </div>
-            <p className="masthead-intro">
-              The basket ranks the 18 vaults by realized fee APR, splits your USDG across the top ones and walks you through each deposit. The
-              positions are yours, in your wallet, exactly as if you had opened them one by one.
-            </p>
+            <p className="masthead-intro">{t("page.intro")}</p>
           </div>
         </div>
       </section>
       <div className="strategies-page">
         <BasketStrategy />
         <BasketExit />
-        <section className="strategy-notes" aria-label="How the basket works">
+        <section className="strategy-notes" aria-label={t("page.notesAria")}>
           <div>
-            <h3>What it does</h3>
-            <p>Ranks open vaults by their observed 24h fee APR, ignores vaults under $1,000, splits the amount evenly and builds one router deposit per vault with the same quote and simulation the vault page uses.</p>
+            <h3>{t("page.doesTitle")}</h3>
+            <p>{t("page.doesBody")}</p>
           </div>
           <div>
-            <h3>What it does not do</h3>
-            <p>It does not hold your funds, does not rotate on its own and does not promise a return. Fee APR is an observation of past pool fees. Every position keeps full Stock Token price exposure.</p>
+            <h3>{t("page.notTitle")}</h3>
+            <p>{t("page.notBody")}</p>
           </div>
           <div>
-            <h3>Costs</h3>
-            <p>One approval and one deposit per vault, each paid in gas on Robinhood Chain. No strategy fee. The vault fee split (70 / 20 / 10) applies as usual.</p>
+            <h3>{t("page.costsTitle")}</h3>
+            <p>{t("page.costsBody")}</p>
           </div>
         </section>
       </div>

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useWallet } from "@/components/wallet/WalletProvider";
+import { useT } from "@/i18n/client";
 import { formatRate18, formatUnitsFixed } from "@/lib/format";
 import type { LendingMarketRow, LendingMarketsResponse, LendingPosition } from "@/server/lending";
 
@@ -68,7 +69,17 @@ export function useLendingPositions(rows: LendingMarketRow[] | null, owner?: str
   return positions;
 }
 
+const STATE_KEYS: Record<string, string> = { Active: "state.active", Paused: "state.paused", Closed: "state.closed", Recovery: "state.recovery" };
+
+/** Maps the contract state name reported by the API to its translated label; unknown states are shown as they arrive. */
+export function stateLabel(t: (key: string) => string, name: string | undefined, prefix: "state" | "stateLower" = "state") {
+  if (!name) return t(`${prefix}.unavailable`);
+  const key = STATE_KEYS[name];
+  return key ? t(key.replace("state.", `${prefix}.`)) : name;
+}
+
 export function LendingDirectory({ initial }: { initial: LendingMarketRow[] | null }) {
+  const t = useT("lending");
   const { rows, error } = useLendingMarkets(initial);
   const { address: owner } = useWallet();
   const positions = useLendingPositions(rows, owner);
@@ -89,51 +100,46 @@ export function LendingDirectory({ initial }: { initial: LendingMarketRow[] | nu
         <div className="masthead-inner">
           <div className="masthead-head">
             <div className="masthead-title">
-              <p className="eyebrow">Lending · USDG markets</p>
+              <p className="eyebrow">{t("dir.eyebrow")}</p>
               <h1>
-                Borrow USDG while your <em className="serif">vault position keeps earning.</em>
+                {t("dir.title.before")}<em className="serif">{t("dir.title.em")}</em>
               </h1>
             </div>
-            <p className="masthead-intro">
-              Lend USDG and earn interest paid by borrowers, or lock your vault shares and borrow USDG against them. Each market has its own USDG
-              and its own losses.
-            </p>
+            <p className="masthead-intro">{t("dir.intro")}</p>
           </div>
           <div className="mast-stats ln-mast-stats">
             <div>
-              <span>Lent to markets</span>
+              <span>{t("dir.stat.lent")}</span>
               <strong>{v(supplied, decimals)}</strong>
-              <span>
-                {list.length} market{list.length === 1 ? "" : "s"} · {active} active
-              </span>
+              <span>{t(list.length === 1 ? "dir.stat.marketsOne" : "dir.stat.marketsMany", { count: list.length, active })}</span>
             </div>
             <div>
-              <span>Borrowed</span>
+              <span>{t("dir.stat.borrowed")}</span>
               <strong>{v(borrowed, decimals)}</strong>
-              <span>{utilisation} utilized</span>
+              <span>{t("dir.stat.utilized", { util: utilisation })}</span>
             </div>
             <div>
-              <span>Available to borrow</span>
+              <span>{t("dir.stat.available")}</span>
               <strong>{v(cash, decimals)}</strong>
-              <span>Not yet lent out</span>
+              <span>{t("dir.stat.notLent")}</span>
             </div>
             <div className="mast-you">
-              <span>You have lent</span>
+              <span>{t("dir.stat.youLent")}</span>
               <strong>{owner && hasPositions ? v(lent ?? 0n, decimals, 2) : "–"}</strong>
-              <span>{owner ? (hasPositions ? "Current value incl. interest" : "Loading your position") : "Connect wallet to view"}</span>
+              <span>{owner ? (hasPositions ? t("dir.stat.currentValue") : t("dir.stat.loadingPosition")) : t("dir.stat.connectToView")}</span>
             </div>
             <div>
-              <span>You owe</span>
+              <span>{t("dir.stat.youOwe")}</span>
               <strong>{owner ? v(owed ?? 0n, decimals, 2) : "–"}</strong>
-              <span>{owner ? "Including interest" : "Connect wallet to view"}</span>
+              <span>{owner ? t("dir.stat.inclInterest") : t("dir.stat.connectToView")}</span>
             </div>
           </div>
         </div>
       </section>
       {list.length === 0 ? (
         <section className="sv-card">
-          <h2>Lending is temporarily unavailable</h2>
-          <p>{error ? "Refresh to obtain a verified market snapshot." : "Reading the market from the chain…"}</p>
+          <h2>{t("dir.unavailable.title")}</h2>
+          <p>{error ? t("dir.unavailable.refresh") : t("dir.unavailable.reading")}</p>
         </section>
       ) : (
         <div className="ln-table-scroll">
@@ -145,9 +151,9 @@ export function LendingDirectory({ initial }: { initial: LendingMarketRow[] | nu
             </colgroup>
             <thead>
               <tr>
-                {["Market", "Status", "Lenders earn", "Borrowers pay", "Currently borrowed", "Lent", "Available to borrow", "Actions"].map((h) => (
+                {["dir.th.market", "dir.th.status", "dir.th.lendersEarn", "dir.th.borrowersPay", "dir.th.borrowed", "dir.th.lent", "dir.th.available", "dir.th.actions"].map((h) => (
                   <th key={h} scope="col">
-                    {h}
+                    {t(h)}
                   </th>
                 ))}
               </tr>
@@ -160,7 +166,7 @@ export function LendingDirectory({ initial }: { initial: LendingMarketRow[] | nu
                 const symbol = r.pin.symbol;
                 return (
                   <tr key={r.pinId}>
-                    <td data-label="Market · collateral">
+                    <td data-label={t("dir.td.market")}>
                       <Link className="ln-identity" href={`/lending/${slug}`}>
                         <span className="ln-stack" aria-hidden="true">
                           <span className="ln-token-icon">
@@ -173,40 +179,40 @@ export function LendingDirectory({ initial }: { initial: LendingMarketRow[] | nu
                           </span>
                         </span>
                         <span>
-                          <b>{`${symbol} vault shares → USDG`}</b>
+                          <b>{t("dir.pair", { symbol })}</b>
                         </span>
                       </Link>
                     </td>
-                    <td data-label="Status">
-                      <span className={`vault-table-tag ${r.contractState.name === "Active" ? "vault-table-tag-open" : "vault-table-tag-paused"}`}>{r.contractState.name}</span>
+                    <td data-label={t("dir.th.status")}>
+                      <span className={`vault-table-tag ${r.contractState.name === "Active" ? "vault-table-tag-open" : "vault-table-tag-paused"}`}>{stateLabel(t, r.contractState.name)}</span>
                     </td>
-                    <td data-label="Lenders earn" className="mono ln-rate-value">
+                    <td data-label={t("dir.th.lendersEarn")} className="mono ln-rate-value">
                       {formatRate18(r.rates.supplyApr)}
                     </td>
-                    <td data-label="Borrowers pay" className="mono ln-rate-value">
+                    <td data-label={t("dir.th.borrowersPay")} className="mono ln-rate-value">
                       {formatRate18(r.rates.borrowApr)}
                     </td>
-                    <td data-label="Currently borrowed" className="ln-span">
+                    <td data-label={t("dir.th.borrowed")} className="ln-span">
                       <span className="ln-util">
                         <span className="ln-util-bar">
                           <i style={{ width: util === "–" ? "0%" : util }} />
                         </span>
-                        <small>{util} of lent USDG</small>
+                        <small>{t("dir.utilOfLent", { util })}</small>
                       </span>
                     </td>
-                    <td data-label="Lent" className="mono">
+                    <td data-label={t("dir.th.lent")} className="mono">
                       {formatUnitsFixed(acc.supplied, decimals, 0)}
                     </td>
-                    <td data-label="Available to borrow" className="mono">
+                    <td data-label={t("dir.th.available")} className="mono">
                       {formatUnitsFixed(acc.cash, decimals, 0)}
                     </td>
-                    <td data-label="Actions">
+                    <td data-label={t("dir.th.actions")}>
                       <span className="ln-row-actions">
                         <Link className="btn btn-primary btn-sm" href={`/lending/${slug}?view=earn`}>
-                          Lend
+                          {t("dir.lend")}
                         </Link>
                         <Link className="btn btn-ghost btn-sm" href={`/lending/${slug}?view=borrow`}>
-                          Borrow
+                          {t("dir.borrow")}
                         </Link>
                       </span>
                     </td>
@@ -217,10 +223,7 @@ export function LendingDirectory({ initial }: { initial: LendingMarketRow[] | nu
           </table>
         </div>
       )}
-      <p className="ln-footnote">
-        Rates are variable, current and not a forecast. Borrowing is limited by the USDG available, the value of locked vault shares, the borrow
-        limit and vault-share concentration. Public liquidation may not be immediate.
-      </p>
+      <p className="ln-footnote">{t("dir.footnote")}</p>
     </main>
   );
 }

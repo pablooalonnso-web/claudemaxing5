@@ -11,6 +11,7 @@ import { formatPercent, formatPrice, formatUsd, usdgToNumber } from "@/lib/forma
 import type { VaultPin } from "@/lib/registry";
 import type { VaultSnapshotRow } from "@/lib/snapshot-types";
 import { primaryPosition, rangePosition } from "@/lib/vault-math";
+import { useT } from "@/i18n/client";
 
 type Card = { pin: VaultPin; row: VaultSnapshotRow | null; tvl: number | null; apr: number | null };
 
@@ -28,12 +29,13 @@ function prices(row: VaultSnapshotRow | null) {
 }
 
 function VaultCard({ card, tint }: { card: Card; tint: (typeof TINTS)[number] }) {
+  const t = useT("home");
   const p = prices(card.row);
   const pool = card.row?.snapshot?.holdings?.positions?.[0]?.pool;
   const venue = card.pin.symbol && pool?.length === 66 ? "Uniswap V4" : "Uniswap V3";
   const widths = p ? { lower: 52, current: p.pct === null ? 70 : 52 + (p.pct / 100) * 42, upper: 94 } : { lower: 40, current: 60, upper: 80 };
   const tooSmall = card.tvl !== null && card.tvl < APR_TVL_FLOOR;
-  const aprLabel = card.apr === null ? "Fee APR · warming up" : tooSmall ? "Fee APR · TVL under $1K" : "Fee APR · 24h";
+  const aprLabel = card.apr === null ? t("cards.apr.warming") : tooSmall ? t("cards.apr.small") : t("cards.apr.24h");
   const apr = card.apr === null || tooSmall ? "–" : formatPercent(card.apr);
   return (
     <PrefetchLink href={card.pin.href} className={`home-vault-card home-vault-card-${tint}`}>
@@ -46,7 +48,7 @@ function VaultCard({ card, tint }: { card: Card; tint: (typeof TINTS)[number] })
             </i>
             <span>
               <b>{formatUsd(card.tvl)}</b>
-              <small>TVL</small>
+              <small>{t("cards.tvl")}</small>
             </span>
           </span>
           <span>
@@ -63,8 +65,8 @@ function VaultCard({ card, tint }: { card: Card; tint: (typeof TINTS)[number] })
               <Ruler size={14} strokeWidth={1.5} aria-hidden="true" />
             </i>
             <span>
-              <b>{p ? (p.inRange ? "In range" : "Out of range") : "–"}</b>
-              <small>LP position</small>
+              <b>{p ? (p.inRange ? t("cards.inRange") : t("cards.outOfRange")) : "–"}</b>
+              <small>{t("cards.lp")}</small>
             </span>
           </span>
         </div>
@@ -80,19 +82,19 @@ function VaultCard({ card, tint }: { card: Card; tint: (typeof TINTS)[number] })
             <span className="mono">01</span>
             <span className="mono">−</span>
             <i style={{ width: `${widths.lower}%` }} />
-            <em className="mono">{p ? formatPrice(p.lower) : "lower"}</em>
+            <em className="mono">{p ? formatPrice(p.lower) : t("cards.lower")}</em>
           </div>
           <div className="home-vault-line add">
             <span className="mono">01</span>
             <span className="mono">+</span>
             <i style={{ width: `${widths.current}%` }} />
-            <em className="mono">{p ? formatPrice(p.current) : "current"}</em>
+            <em className="mono">{p ? formatPrice(p.current) : t("cards.current")}</em>
           </div>
           <div className="home-vault-line add">
             <span className="mono">02</span>
             <span className="mono">+</span>
             <i style={{ width: `${widths.upper}%` }} />
-            <em className="mono">{p ? formatPrice(p.upper) : "upper"}</em>
+            <em className="mono">{p ? formatPrice(p.upper) : t("cards.upper")}</em>
           </div>
         </div>
         <div className="home-vault-comment">
@@ -103,13 +105,13 @@ function VaultCard({ card, tint }: { card: Card; tint: (typeof TINTS)[number] })
           <p>
             {p
               ? p.inRange
-                ? `Price inside the ${formatPrice(p.lower)}–${formatPrice(p.upper)} band; fees accrue on every trade.`
-                : `Price left the ${formatPrice(p.lower)}–${formatPrice(p.upper)} band; keeper rebalance pending.`
-              : "Waiting for the next onchain observation."}
+                ? t("cards.comment.inRange", { lower: formatPrice(p.lower), upper: formatPrice(p.upper) })
+                : t("cards.comment.outOfRange", { lower: formatPrice(p.lower), upper: formatPrice(p.upper) })
+              : t("cards.comment.waiting")}
           </p>
         </div>
         <div className="home-vault-foot mono">
-          Open vault <ArrowRight size={12} strokeWidth={1.5} aria-hidden="true" />
+          {t("cards.open")} <ArrowRight size={12} strokeWidth={1.5} aria-hidden="true" />
         </div>
       </div>
     </PrefetchLink>
@@ -117,6 +119,7 @@ function VaultCard({ card, tint }: { card: Card; tint: (typeof TINTS)[number] })
 }
 
 export function LiveVaultCards() {
+  const t = useT("home");
   const { singles, snapshot, rows, error } = useProtocolVaults();
   const cards: Card[] = singles.map((pin) => {
     const summary = snapshot?.rows.find((r) => r.vault.toLowerCase() === pin.vault.toLowerCase()) ?? null;
@@ -135,11 +138,11 @@ export function LiveVaultCards() {
       </div>
       <p className="home-vault-updated" aria-live={error ? "polite" : "off"}>
         {readAt === null
-          ? `Reading ${CHAIN_NAME}…`
+          ? t("cards.reading", { chain: CHAIN_NAME })
           : error
-            ? `Last read from ${CHAIN_NAME} at ${readAt}; retrying automatically.`
-            : `Read from ${CHAIN_NAME} at ${readAt}, refreshed every 15 seconds.`}{" "}
-        <Link href="/vaults">See all {singles.length} vaults</Link>
+            ? t("cards.lastRead", { chain: CHAIN_NAME, time: readAt })
+            : t("cards.readAt", { chain: CHAIN_NAME, time: readAt })}{" "}
+        <Link href="/vaults">{t("cards.seeAll", { count: singles.length })}</Link>
       </p>
     </div>
   );

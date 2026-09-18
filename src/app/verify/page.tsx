@@ -3,6 +3,7 @@ import Link from "next/link";
 import { FlaskConical, Radio, ShieldOff } from "lucide-react";
 import { SiteFooter } from "@/components/SiteFooter";
 import { SiteHeader } from "@/components/SiteHeader";
+import { getT } from "@/i18n/server";
 import { BRAND } from "@/lib/brand";
 import { EXPLORER_URL } from "@/lib/chain";
 import { formatUtc } from "@/lib/format";
@@ -10,13 +11,12 @@ import type { VerificationReport, VerificationStatus } from "@/lib/verification"
 import report from "../../../public/verification/latest.json";
 import styles from "@/styles/verify.module.css";
 
-export const metadata: Metadata = {
-  title: `Verification · ${BRAND.name}`,
-  description: `Automated functional verification of the ${BRAND.name} contracts and site, with the script to reproduce it.`,
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getT("verify");
+  return { title: `${t("meta.title")} · ${BRAND.name}`, description: t("meta.description", { brand: BRAND.name }) };
+}
 
 const data = report as VerificationReport;
-const LABEL: Record<VerificationStatus, string> = { pass: "Pass", fail: "Fail", warn: "Warn", skip: "Skipped" };
 
 function worst(statuses: VerificationStatus[]): VerificationStatus {
   if (statuses.includes("fail")) return "fail";
@@ -24,7 +24,9 @@ function worst(statuses: VerificationStatus[]): VerificationStatus {
   return "pass";
 }
 
-export default function VerifyPage() {
+export default async function VerifyPage() {
+  const t = await getT("verify");
+  const LABEL: Record<VerificationStatus, string> = { pass: t("status.pass"), fail: t("status.fail"), warn: t("status.warn"), skip: t("status.skip") };
   const runDate = data.generatedAt.slice(0, 10);
   return (
     <main className="app-page">
@@ -32,76 +34,73 @@ export default function VerifyPage() {
       <div className={styles.page}>
         <header className={styles.hero}>
           <div>
-            <p className={styles.eyebrow}>Verification · run {runDate}</p>
+            <p className={styles.eyebrow}>{t("hero.eyebrow", { date: runDate })}</p>
             <h1>
-              Every check,
+              {t("hero.title.before")}
               <br />
-              <em>in the open.</em>
+              <em>{t("hero.title.em")}</em>
             </h1>
-            <p>
-              We run the same reads, quotes and router calls the app makes, against the live contracts on Robinhood Chain and the production site, and publish the
-              result with the script that produced it. Deposits and withdrawals are executed inside the node as simulations. No transaction is signed.
-            </p>
+            <p>{t("hero.intro")}</p>
           </div>
           <div className={styles.scorecard}>
-            <div className={styles.score} aria-label="Summary">
+            <div className={styles.score} aria-label={t("summary.aria")}>
               <div className={styles.pass}>
                 <strong>{data.summary.pass}</strong>
-                <span>Pass</span>
+                <span>{t("summary.pass")}</span>
               </div>
               <div className={styles.fail}>
                 <strong>{data.summary.fail}</strong>
-                <span>Fail</span>
+                <span>{t("summary.fail")}</span>
               </div>
               <div>
                 <strong>{data.summary.warn + data.summary.skip}</strong>
-                <span>Warn or skipped</span>
+                <span>{t("summary.warnSkip")}</span>
               </div>
             </div>
             <dl className={styles.meta}>
               <div>
-                <span>Run at</span>
+                <span>{t("meta.runAt")}</span>
                 <strong>{formatUtc(data.generatedAt)}</strong>
               </div>
               <div>
-                <span>Chain head</span>
+                <span>{t("meta.chainHead")}</span>
                 <strong>
                   <a href={`${EXPLORER_URL}/block/${data.chain.head}`} target="_blank" rel="noopener noreferrer">
-                    Block {data.chain.head}
+                    {t("meta.block", { block: data.chain.head })}
                   </a>
                 </strong>
               </div>
               <div>
-                <span>Site checked</span>
-                <strong>{data.site ? new URL(data.site).host : "Skipped"}</strong>
+                <span>{t("meta.site")}</span>
+                <strong>{data.site ? new URL(data.site).host : t("meta.skipped")}</strong>
               </div>
               <div>
-                <span>Site commit</span>
-                <strong>{data.commit ? data.commit.slice(0, 7) : "Unknown"}</strong>
+                <span>{t("meta.commit")}</span>
+                <strong>{data.commit ? data.commit.slice(0, 7) : t("meta.unknown")}</strong>
               </div>
             </dl>
           </div>
         </header>
 
-        <section className={styles.scope} aria-label="Scope">
+        <section className={styles.scope} aria-label={t("scope.aria")}>
           <article>
             <Radio size={22} aria-hidden="true" />
-            <h2>What it covers</h2>
-            <p>Chain and contract wiring, live state of all 18 vaults, the fee counters, a deposit and two withdrawal paths per vault, the lending market, swap routing, and every page and API on the site.</p>
+            <h2>{t("scope.covers.title")}</h2>
+            <p>{t("scope.covers.body")}</p>
           </article>
           <article>
             <FlaskConical size={22} aria-hidden="true" />
-            <h2>How it runs</h2>
-            <p>A throwaway account is handed a USDG balance and allowance through eth_call state overrides so the router can execute end to end inside the node. The numbers are the node&apos;s answers, not ours.</p>
+            <h2>{t("scope.runs.title")}</h2>
+            <p>{t("scope.runs.body")}</p>
           </article>
           <article className={styles.not}>
             <ShieldOff size={22} aria-hidden="true" />
-            <h2>What it is not</h2>
-            <p>This is not a third-party security audit and does not prove the contracts are free of bugs. {BRAND.name} has not commissioned an independent audit of the vault contracts. Verify before you deposit.</p>
+            <h2>{t("scope.not.title")}</h2>
+            <p>{t("scope.not.body", { brand: BRAND.name })}</p>
           </article>
         </section>
 
-        <nav className={styles.toc} aria-label="Sections">
+        <nav className={styles.toc} aria-label={t("toc.aria")}>
           {data.groups.map((g) => {
             const tone = worst(g.checks.map((c) => c.status));
             return (
@@ -126,9 +125,10 @@ export default function VerifyPage() {
                   <p>{g.description}</p>
                 </div>
                 <small>
-                  {counts.pass} pass{counts.fail ? ` · ${counts.fail} fail` : ""}
-                  {counts.warn ? ` · ${counts.warn} warn` : ""}
-                  {counts.skip ? ` · ${counts.skip} skipped` : ""}
+                  {t("counts.pass", { n: counts.pass })}
+                  {counts.fail ? t("counts.fail", { n: counts.fail }) : ""}
+                  {counts.warn ? t("counts.warn", { n: counts.warn }) : ""}
+                  {counts.skip ? t("counts.skip", { n: counts.skip }) : ""}
                 </small>
               </div>
               <div className={styles.table} role="table">
@@ -148,18 +148,23 @@ export default function VerifyPage() {
 
         <section className={styles.repro} aria-labelledby="repro-heading">
           <div>
-            <p className={styles.eyebrow}>Reproduce it</p>
-            <h2 id="repro-heading">Run the same checks yourself.</h2>
+            <p className={styles.eyebrow}>{t("repro.eyebrow")}</p>
+            <h2 id="repro-heading">{t("repro.title")}</h2>
             <p>
-              The script lives in the site repository as <code>scripts/verify.ts</code>. It needs Node 22 and nothing else: no keys, no wallet, no API token. Point it at
-              any RPC for Robinhood Chain with NEXT_PUBLIC_RPC_URL if you do not trust the default.
+              {t("repro.p1.before")}
+              <code>scripts/verify.ts</code>
+              {t("repro.p1.after")}
             </p>
             <p>
-              The raw result of this run is at <a href="/verification/latest.json">/verification/latest.json</a>. Questions go to{" "}
+              {t("repro.p2.before")}
+              <a href="/verification/latest.json">/verification/latest.json</a>
+              {t("repro.p2.middle")}
               <a href={BRAND.xUrl} target="_blank" rel="noopener noreferrer">
                 @{BRAND.xHandle}
-              </a>{" "}
-              or the <Link href="/help/contact">contact page</Link>.
+              </a>
+              {t("repro.p2.or")}
+              <Link href="/help/contact">{t("repro.p2.link")}</Link>
+              {t("repro.p2.after")}
             </p>
           </div>
           <pre>
@@ -167,10 +172,10 @@ export default function VerifyPage() {
             <b>$</b> cd vertex && npm install{"\n"}
             <b>$</b> npm run verify{"\n"}
             {"\n"}
-            <b>#</b> chain only, no site checks{"\n"}
+            <b>#</b> {t("repro.comment.chainOnly")}{"\n"}
             <b>$</b> npm run verify -- --no-site{"\n"}
             {"\n"}
-            <b>#</b> also typecheck and lint the site{"\n"}
+            <b>#</b> {t("repro.comment.build")}{"\n"}
             <b>$</b> npm run verify -- --build
           </pre>
         </section>

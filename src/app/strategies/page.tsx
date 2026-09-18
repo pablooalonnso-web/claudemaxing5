@@ -5,14 +5,19 @@ import { ArrowDownRight, ArrowRight, ArrowUpRight, Lock, Plus } from "lucide-rea
 import { SiteFooter } from "@/components/SiteFooter";
 import { SiteHeader } from "@/components/SiteHeader";
 import { StockLogo } from "@/components/StockLogo";
+import { getT } from "@/i18n/server";
 import { BRAND } from "@/lib/brand";
 import "@/styles/strategies.css";
 
-export const metadata: Metadata = { title: `Strategies · ${BRAND.name}` };
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getT("strategies");
+  return { title: `${t("meta.title")} · ${BRAND.name}` };
+}
 
 const BASKET = ["MSTR", "PLTR", "GME", "TSLA", "NVDA", "AMD"];
 
-export default function StrategiesPage() {
+export default async function StrategiesPage() {
+  const t = await getT("strategies");
   return (
     <main className="app-page">
       <SiteHeader />
@@ -20,15 +25,16 @@ export default function StrategiesPage() {
         <div className="masthead-inner">
           <div className="masthead-head">
             <div className="masthead-title">
-              <p className="eyebrow">Strategies</p>
+              <p className="eyebrow">{t("hero.eyebrow")}</p>
               <h1>
-                Vaults and lending, <em className="serif">combined.</em>
+                {t("hero.title.before")}
+                <em className="serif">{t("hero.title.em")}</em>
               </h1>
             </div>
-            <p className="masthead-intro">Deposit USDG once and spread it across several vaults, or wait for the hedged one. The basket is live and you sign every step; the delta-neutral strategy stays in design until a short venue exists on Robinhood Chain.</p>
+            <p className="masthead-intro">{t("hero.intro")}</p>
             <div className="masthead-aside">
               <span className="strategy-status strategy-status-live">
-                <i aria-hidden="true" /> 1 of 2 live
+                <i aria-hidden="true" /> {t("hero.live")}
               </span>
             </div>
           </div>
@@ -39,14 +45,14 @@ export default function StrategiesPage() {
           <article className="strategy-card">
             <header className="strategy-card-head">
               <div>
-                <p className="eyebrow">01 · Volatile</p>
-                <h2>The highest-earning vaults, in one deposit.</h2>
+                <p className="eyebrow">{t("basket.eyebrow")}</p>
+                <h2>{t("basket.title")}</h2>
               </div>
               <span className="strategy-status strategy-status-live">
-                <i aria-hidden="true" /> Live
+                <i aria-hidden="true" /> {t("basket.live")}
               </span>
             </header>
-            <div className="strategy-visual strategy-basket" aria-label="Example Stock Tokens in the basket">
+            <div className="strategy-visual strategy-basket" aria-label={t("basket.visualAria")}>
               <div className="strategy-basket-marks">
                 {BASKET.map((s, i) => (
                   <span key={s} style={{ zIndex: BASKET.length - i }}>
@@ -55,52 +61,48 @@ export default function StrategiesPage() {
                 ))}
               </div>
               <div className="strategy-basket-copy">
-                <b>A basket of the top vaults by realized fee APR</b>
-                <span>Rotation is suggested when the ranking changes. You sign every move.</span>
+                <b>{t("basket.visualTitle")}</b>
+                <span>{t("basket.visualSub")}</span>
               </div>
             </div>
-            <p className="strategy-lede">
-              One USDG amount spread evenly across the vaults earning the most trading fees right now, deposited through the same router as the
-              vault pages. The positions sit in your wallet. When the ranking changes, the basket page shows what left the top and what entered,
-              and you decide whether to move.
-            </p>
+            <p className="strategy-lede">{t("basket.lede")}</p>
             <dl className="strategy-facts">
               <div>
-                <dt>Earns</dt>
-                <dd>Trading fees from several Stock Token markets at once</dd>
+                <dt>{t("facts.earns")}</dt>
+                <dd>{t("basket.earns")}</dd>
               </div>
               <div>
-                <dt>Exposure</dt>
-                <dd>Full Stock Token price exposure across the basket, so value moves with the markets it holds</dd>
+                <dt>{t("facts.exposure")}</dt>
+                <dd>{t("basket.exposure")}</dd>
               </div>
               <div>
-                <dt>Deposit</dt>
+                <dt>{t("facts.deposit")}</dt>
                 <dd className="strategy-deposit">
                   <Image src="/brands/usdg.png" alt="" width={22} height={22} /> USDG
                 </dd>
               </div>
             </dl>
             <footer className="strategy-card-foot">
-              <span className="strategy-closed">No strategy fee · gas per vault</span>
+              <span className="strategy-closed">{t("basket.foot")}</span>
               <Link href="/strategies/basket">
-                Open the basket <ArrowRight size={14} aria-hidden="true" />
+                {t("basket.open")} <ArrowRight size={14} aria-hidden="true" />
               </Link>
             </footer>
           </article>
           <article className="strategy-card">
             <header className="strategy-card-head">
               <div>
-                <p className="eyebrow">02 · Delta-neutral</p>
-                <h2>Vault fees, with a price hedge.</h2>
+                <p className="eyebrow">{t("neutral.eyebrow")}</p>
+                <h2>{t("neutral.title")}</h2>
               </div>
               <span className="strategy-status">
-                <Lock size={12} strokeWidth={1.6} aria-hidden="true" /> In design
+                <Lock size={12} strokeWidth={1.6} aria-hidden="true" /> {t("neutral.inDesign")}
               </span>
             </header>
-            <div className="strategy-visual strategy-neutral" aria-label="How the delta-neutral strategy is built">
+            <div className="strategy-visual strategy-neutral" aria-label={t("neutral.visualAria")}>
               <div className="strategy-side strategy-long">
                 <span className="strategy-side-label">
-                  <ArrowUpRight size={13} aria-hidden="true" /> Long
+                  <ArrowUpRight size={13} aria-hidden="true" /> {t("neutral.long")}
                 </span>
                 <span className="strategy-side-marks">
                   <StockLogo symbol="TSLA" size={36} />
@@ -108,83 +110,72 @@ export default function StrategiesPage() {
                     <Image alt="USDG" width={36} height={36} src="/brands/usdg.png" />
                   </span>
                 </span>
-                <b>LP position in the TSLA / USDG vault</b>
-                <span>Earns trading fees. Gains when TSLA rises.</span>
+                <b>{t("neutral.longTitle")}</b>
+                <span>{t("neutral.longSub")}</span>
               </div>
               <div className="strategy-combine" aria-hidden="true">
                 <Plus size={16} strokeWidth={1.6} />
               </div>
               <div className="strategy-side strategy-short">
                 <span className="strategy-side-label">
-                  <ArrowDownRight size={13} aria-hidden="true" /> Short
+                  <ArrowDownRight size={13} aria-hidden="true" /> {t("neutral.short")}
                 </span>
                 <span className="strategy-side-marks">
                   <StockLogo symbol="TSLA" size={36} />
                 </span>
-                <b>Short TSLA on an external venue</b>
-                <span>Gains when TSLA falls. Offsets the long side.</span>
+                <b>{t("neutral.shortTitle")}</b>
+                <span>{t("neutral.shortSub")}</span>
               </div>
-              <div className="strategy-result">The hedge aims to reduce Stock Token price exposure. Returns still depend on vault fees, hedge costs and market conditions.</div>
+              <div className="strategy-result">{t("neutral.result")}</div>
             </div>
             <p className="strategy-lede">
-              Delta-neutral means the position is designed to reduce exposure to Stock Token price moves. The long side is an ordinary vault
-              position, so it keeps earning fees. The short side aims to offset its changing price exposure and needs ongoing adjustment. Starting
-              markets in design:{" "}
+              {t("neutral.lede.before")}
               <span className="strategy-inline-mark">
                 <StockLogo symbol="TSLA" size={18} />
-                TSLA and{" "}
+                {t("neutral.lede.first")}
               </span>
               <span className="strategy-inline-mark">
                 <StockLogo symbol="MSTR" size={18} />
-                MSTR
+                {t("neutral.lede.second")}
               </span>
-              , each paired with USDG.
+              {t("neutral.lede.after")}
             </p>
             <dl className="strategy-facts">
               <div>
-                <dt>Earns</dt>
-                <dd>Vault trading fees</dd>
+                <dt>{t("facts.earns")}</dt>
+                <dd>{t("neutral.earns")}</dd>
               </div>
               <div>
-                <dt>Exposure</dt>
-                <dd>Aims for none to the Stock Token price. Hedge costs, borrow interest and basis between venues still apply.</dd>
+                <dt>{t("facts.exposure")}</dt>
+                <dd>{t("neutral.exposure")}</dd>
               </div>
               <div>
-                <dt>Deposit</dt>
+                <dt>{t("facts.deposit")}</dt>
                 <dd className="strategy-deposit">
                   <Image src="/brands/usdg.png" alt="" width={22} height={22} /> USDG
                 </dd>
               </div>
             </dl>
             <footer className="strategy-card-foot">
-              <span className="strategy-closed">Blocked on a short venue for Stock Tokens on Robinhood Chain</span>
+              <span className="strategy-closed">{t("neutral.foot")}</span>
               <Link href="/lending">
-                See the lending it would borrow on <ArrowRight size={14} aria-hidden="true" />
+                {t("neutral.lending")} <ArrowRight size={14} aria-hidden="true" />
               </Link>
             </footer>
           </article>
         </div>
-        <section className="strategy-notes" aria-label="About strategies">
+        <section className="strategy-notes" aria-label={t("notes.aria")}>
           <div>
-            <h3>What a strategy is</h3>
-            <p>
-              A guided way to open and maintain several {BRAND.name} positions with one decision. The basket keeps every position in your
-              wallet and asks you to sign each step; nothing is pooled and no contract holds funds on your behalf.
-            </p>
+            <h3>{t("notes.isTitle")}</h3>
+            <p>{t("notes.isBody", { brand: BRAND.name })}</p>
           </div>
           <div>
-            <h3>What it is not</h3>
-            <p>
-              Not a stablecoin, not principal-protected, and not a promise of return. Hedges can fail, borrow rates move, and liquidation rules
-              apply to the strategy&apos;s own positions.
-            </p>
+            <h3>{t("notes.notTitle")}</h3>
+            <p>{t("notes.notBody")}</p>
           </div>
           <div>
-            <h3>Before the hedged strategy opens</h3>
-            <p>
-              A venue to short Stock Tokens on Robinhood Chain, published terms and limits, an independent review, and a capped launch with a
-              guardian pause. Until then it stays in design.
-            </p>
+            <h3>{t("notes.beforeTitle")}</h3>
+            <p>{t("notes.beforeBody")}</p>
           </div>
         </section>
       </div>

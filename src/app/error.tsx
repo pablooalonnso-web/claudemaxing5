@@ -1,13 +1,16 @@
 "use client";
 
+import { useT } from "@/i18n/client";
+
 export default function RouteError({ reset }: { error: Error & { digest?: string }; reset: () => void }) {
+  const t = useT("errors");
   return (
     <main className="error-page">
-      <p className="eyebrow">Application error</p>
-      <h1>The experience could not load.</h1>
-      <p>Your wallet, assets, and contract state have not been changed.</p>
+      <p className="eyebrow">{t("app.eyebrow")}</p>
+      <h1>{t("app.title")}</h1>
+      <p>{t("app.body")}</p>
       <button type="button" onClick={() => reset()}>
-        Try again
+        {t("app.retry")}
       </button>
     </main>
   );

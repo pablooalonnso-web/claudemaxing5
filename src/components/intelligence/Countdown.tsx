@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useT } from "@/i18n/client";
 import styles from "@/styles/intelligence.module.css";
 
 function parts(target: number, now: number) {
@@ -18,19 +19,20 @@ function parts(target: number, now: number) {
 }
 
 export function Countdown({ target }: { target: string }) {
+  const t = useT("intelligence");
   const [now, setNow] = useState<number | null>(null);
   useEffect(() => {
     setNow(Date.now());
-    const t = setInterval(() => setNow(Date.now()), 1000);
-    return () => clearInterval(t);
+    const i = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(i);
   }, []);
-  const t = Date.parse(target);
+  const at = Date.parse(target);
   return (
-    <div className={styles.countdown} role="timer" aria-label="Time until the estimated reveal" aria-live="off">
-      {parts(t, now ?? t).map(([unit, value]) => (
+    <div className={styles.countdown} role="timer" aria-label={t("countdown.aria")} aria-live="off">
+      {parts(at, now ?? at).map(([unit, value]) => (
         <div className={styles.timeUnit} key={unit}>
           <span className={styles.digit}>{now === null ? "–" : String(value).padStart(2, "0")}</span>
-          <span className={styles.unit}>{unit}</span>
+          <span className={styles.unit}>{t(`countdown.${unit}`)}</span>
         </div>
       ))}
     </div>

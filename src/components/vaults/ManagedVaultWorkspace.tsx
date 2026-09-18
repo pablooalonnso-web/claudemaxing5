@@ -5,6 +5,7 @@ import { useCallback, useMemo, useState, useSyncExternalStore } from "react";
 import { StockLogo } from "@/components/StockLogo";
 import { useVaultView } from "@/components/data/useVaultView";
 import { useWallet } from "@/components/wallet/WalletProvider";
+import { useT } from "@/i18n/client";
 import { explorerAddress } from "@/lib/chain";
 import { formatCurrency, formatPercent, formatPrice, formatUsd, usdgToNumber } from "@/lib/format";
 import { depositStatusOf, type ManagedLiveState } from "@/lib/managed-vault";
@@ -20,7 +21,17 @@ const money = (v: number | null) => (v !== null && Number.isFinite(v) ? v.toLoca
 const signed = (v: number) => `${v > 0 ? "+" : ""}${v.toLocaleString("en-US", { maximumFractionDigits: 1 })}%`;
 const short = (a: string) => `${a.slice(0, 6)}…${a.slice(-4)}`;
 
+/** Stable key for the label `depositStatusOf` (src/lib/managed-vault.ts) returns, mirroring its branch order. */
+export function managedStatusKey(state: Parameters<typeof depositStatusOf>[0]): "checking" | "recovery" | "stopped" | "restart" | "open" | "closed" {
+  if (!state) return "checking";
+  if (state.recovery) return "recovery";
+  if (state.stopped) return "stopped";
+  if (state.restart) return "restart";
+  return state.open ? "open" : "closed";
+}
+
 function Freshness({ observedAt, priceAsOf, delayed, valuationDelayed }: { observedAt?: string; priceAsOf?: string | null; delayed: boolean; valuationDelayed: boolean }) {
+  const t = useT("vaults");
   const client = useSyncExternalStore(noop, () => true, () => false);
   const fmt = (iso: string, full = false) =>
     new Date(iso).toLocaleString("en-US", {
@@ -30,7 +41,7 @@ function Freshness({ observedAt, priceAsOf, delayed, valuationDelayed }: { obser
       ...(!client ? { timeZone: "UTC", timeZoneName: "short" } : {}),
     });
   const has = !!observedAt && Number.isFinite(Date.parse(observedAt));
-  const label = valuationDelayed ? "Valuation delayed" : delayed ? "Update delayed" : has ? "Updated" : "Loading…";
+  const label = valuationDelayed ? t("fresh.valuationDelayed") : delayed ? t("fresh.updateDelayed") : has ? t("fresh.updated") : t("fresh.loading");
   return (
     <details className={`vault-freshness${delayed || valuationDelayed ? " vault-freshness-delayed" : ""}`}>
       <summary>
@@ -46,21 +57,26 @@ function Freshness({ observedAt, priceAsOf, delayed, valuationDelayed }: { obser
       <div className="vault-freshness-details">
         {has ? (
           <p>
-            Holdings and fees: <time dateTime={observedAt}>{fmt(observedAt!, true)}</time>.
+            {t("fresh.holdings.before")}
+            <time dateTime={observedAt}>{fmt(observedAt!, true)}</time>
+            {t("fresh.holdings.after")}
           </p>
         ) : null}
         {priceAsOf && Number.isFinite(Date.parse(priceAsOf)) ? (
           <p>
-            Market price: <time dateTime={priceAsOf}>{fmt(priceAsOf, true)}</time>.
+            {t("fresh.price.before")}
+            <time dateTime={priceAsOf}>{fmt(priceAsOf, true)}</time>
+            {t("fresh.price.after")}
           </p>
         ) : null}
-        <p>{delayed ? "Showing saved values while checking for updates." : "Refreshes automatically."}</p>
+        <p>{delayed ? t("fresh.saved") : t("fresh.auto")}</p>
       </div>
     </details>
   );
 }
 
 export function ManagedVaultWorkspace({ pin }: { pin: VaultPin }) {
+  const t = useT("vaults");
   const entry = pin.preview;
   const { address: owner } = useWallet();
   const view = useVaultView(pin, owner);
@@ -74,6 +90,7 @@ export function ManagedVaultWorkspace({ pin }: { pin: VaultPin }) {
   const stockToken = entry.asset.toLowerCase() === entry.token0.toLowerCase() ? entry.token1 : entry.token0;
   const managedState = live ?? snapshot?.extras?.managedState ?? null;
   const deposit = depositStatusOf(managedState);
+  const depositLabel = t(`managed.${managedStatusKey(managedState)}`);
   const unclaimed = position?.unclaimedFees ?? null;
   const lifetime = snapshot?.fees ?? null;
   const totalFees = lifetime !== null && unclaimed !== null ? (BigInt(lifetime) + BigInt(unclaimed)).toString() : null;
@@ -89,34 +106,35 @@ export function ManagedVaultWorkspace({ pin }: { pin: VaultPin }) {
   const delayed = !!view.row && isStale(view.row);
   const valuationDelayed = !!live && live.value === null;
   const apr = view.apr;
+  const vaultName = t("detail.vaultName", { symbol });
 
   return (
     <main className="single-vault-workspace managed-vault-workspace masthead-page">
       <section className="masthead masthead-1120 masthead-bleed">
         <div className="masthead-inner">
-          <nav className="masthead-crumb sv-breadcrumb" aria-label="Breadcrumb">
-            <Link href="/vaults">Vaults</Link>
+          <nav className="masthead-crumb sv-breadcrumb" aria-label={t("detail.breadcrumbAria")}>
+            <Link href="/vaults">{t("detail.vaults")}</Link>
             <span aria-hidden="true">/</span>
-            <span>{symbol} vault</span>
+            <span>{vaultName}</span>
           </nav>
           <header className="masthead-head single-vault-header sv-header">
             <div className="masthead-identity">
               <StockLogo symbol={symbol} size={52} />
               <div>
                 <h1>
-                  {symbol} vault <span className="mono">{symbol} / USDG</span>
+                  {vaultName} <span className="mono">{symbol} / USDG</span>
                 </h1>
                 <div className="masthead-tags">
-                  <span
-                    className={`vault-table-tag vault-table-tag-${deposit.tone}`}
-                    title={managedState ? "Last observed vault status. Availability is checked again before wallet approval." : "Availability will be checked before wallet approval."}
-                    role="status"
-                  >
-                    {deposit.label}
+                  <span className={`vault-table-tag vault-table-tag-${deposit.tone}`} title={managedState ? t("detail.statusTitleObserved") : t("detail.statusTitlePending")} role="status">
+                    {depositLabel}
                   </span>
-                  <span className="dtag">Vault shares</span>
+                  <span className="dtag">{t("detail.sharesTag")}</span>
                   <a className="dtag" href={explorerAddress(entry.vault)} target="_blank" rel="noreferrer">
-                    Vault <code>{entry.vault.slice(0, 6)}…{entry.vault.slice(-4)}</code> ↗
+                    {t("detail.vaultLink")}{" "}
+                    <code>
+                      {entry.vault.slice(0, 6)}…{entry.vault.slice(-4)}
+                    </code>{" "}
+                    ↗
                   </a>
                 </div>
               </div>
@@ -124,34 +142,34 @@ export function ManagedVaultWorkspace({ pin }: { pin: VaultPin }) {
           </header>
           <div className="mast-stats sv-stats single-vault-metrics sv-stats-fees">
             <div>
-              <MetricLabel label="Total value locked">USDG in this vault</MetricLabel>
+              <MetricLabel label={t("metric.tvl")}>{t("metric.tvlTip")}</MetricLabel>
               <strong>{formatUsd(usdgToNumber(totalAssets))}</strong>
             </div>
             <div className="sv-apr single-vault-apr">
-              <MetricLabel label="Est. fee APR · 24h">{apr === null ? "Awaiting sufficient current data" : "At current invested allocation"}</MetricLabel>
+              <MetricLabel label={t("metric.apr")}>{apr === null ? t("metric.aprAwaiting") : t("metric.aprCurrent")}</MetricLabel>
               <strong>{formatPercent(apr)}</strong>
             </div>
             <div>
-              <MetricLabel label="Your fee earnings">{owner ? "Fees attributable to your shares are computed from vault history and appear once the earnings indexer has observed your position." : "Connect your wallet to view earnings"}</MetricLabel>
+              <MetricLabel label={t("metric.earnings")}>{owner ? t("metric.earningsTip") : t("metric.earningsConnect")}</MetricLabel>
               <strong>–</strong>
             </div>
             <div>
-              <MetricLabel label="Unclaimed fees">Accrued in the LP · before vault fees</MetricLabel>
+              <MetricLabel label={t("metric.unclaimed")}>{t("metric.unclaimedTip")}</MetricLabel>
               <strong>{formatCurrency(usdgToNumber(unclaimed))}</strong>
             </div>
             <div>
-              <MetricLabel label="Total fees earned">Collected + unclaimed · before vault fees</MetricLabel>
+              <MetricLabel label={t("metric.totalFees")}>{t("metric.totalFeesTip")}</MetricLabel>
               <strong>{formatCurrency(usdgToNumber(totalFees))}</strong>
             </div>
           </div>
         </div>
       </section>
       <div className="single-vault-body">
-        <section className="single-vault-liquidity" aria-label="Vault liquidity positions">
+        <section className="single-vault-liquidity" aria-label={t("liquidity.aria")}>
           <div className="sv-card">
             <div className="sv-card-head">
               <div>
-                <h2>Price and LP range</h2>
+                <h2>{t("liquidity.title")}</h2>
                 <p>{symbol} / USDG</p>
               </div>
               <Freshness observedAt={holdings?.observedAt} priceAsOf={snapshot?.extras?.displayPriceAsOf} delayed={delayed} valuationDelayed={valuationDelayed} />
@@ -159,50 +177,50 @@ export function ManagedVaultWorkspace({ pin }: { pin: VaultPin }) {
             <RangeChart points={points} lower={position?.status === "active" ? position.lower : null} upper={position?.status === "active" ? position.upper : null} current={position?.current ?? null} symbol={symbol} unavailable={!holdings} />
             <div className="sv-bounds">
               <div>
-                <span>Lower bound</span>
+                <span>{t("bounds.lower")}</span>
                 <strong>{money(position?.lower ?? null)}</strong>
-                <small>{distances ? `${signed(distances.toLower)} from price` : "–"}</small>
+                <small>{distances ? t("bounds.fromPrice", { delta: signed(distances.toLower) }) : "–"}</small>
               </div>
               <div>
-                <span>Current pool price</span>
+                <span>{t("bounds.current")}</span>
                 <strong>{money(position?.current ?? null)}</strong>
                 <small>
                   {position
                     ? position.status === "active"
                       ? position.inRange === null
-                        ? "Price unavailable"
+                        ? t("bounds.priceUnavailable")
                         : position.inRange
-                          ? "Inside the range"
-                          : "Outside the range"
-                      : "Range not yet active"
+                          ? t("bounds.inside")
+                          : t("bounds.outside")
+                      : t("bounds.notActive")
                     : holdings
-                      ? "No position"
-                      : "Range data unavailable"}
+                      ? t("bounds.noPosition")
+                      : t("bounds.unavailable")}
                 </small>
               </div>
               <div>
-                <span>Upper bound</span>
+                <span>{t("bounds.upper")}</span>
                 <strong>{money(position?.upper ?? null)}</strong>
-                <small>{distances ? `${signed(distances.toUpper)} from price` : "–"}</small>
+                <small>{distances ? t("bounds.fromPrice", { delta: signed(distances.toUpper) }) : "–"}</small>
               </div>
               <div>
-                <span>Range width</span>
+                <span>{t("bounds.width")}</span>
                 <strong>{distances ? `${distances.width.toLocaleString("en-US", { maximumFractionDigits: 1 })}%` : "–"}</strong>
-                <small>Upper over lower</small>
+                <small>{t("bounds.widthNote")}</small>
               </div>
             </div>
           </div>
           {holdings ? (
             holdings.positions.length === 0 ? (
               <div className="single-vault-empty">
-                <h3>Waiting for the first position</h3>
-                <p>Configured pools appear here automatically.</p>
+                <h3>{t("lp.waitingTitle")}</h3>
+                <p>{t("lp.waitingBody")}</p>
               </div>
             ) : (
               holdings.positions.map((p) => {
                 const pct = rangePosition(p.lower, p.upper, p.current);
                 const active = p.status === "active";
-                const label = p.status === "recovery" ? "Recovery in progress" : p.status === "unavailable" ? "Temporarily unavailable" : active ? (p.inRange === null ? "Price unavailable" : p.inRange ? "In range" : "Out of range") : "Awaiting allocation";
+                const label = p.status === "recovery" ? t("lp.recovery") : p.status === "unavailable" ? t("lp.unavailable") : active ? (p.inRange === null ? t("lp.priceUnavailable") : p.inRange ? t("lp.inRange") : t("lp.outOfRange")) : t("lp.awaiting");
                 const isV4 = !!entry.v4;
                 const v4 = entry.v4 as { poolId?: string } | undefined;
                 return (
@@ -215,38 +233,36 @@ export function ManagedVaultWorkspace({ pin }: { pin: VaultPin }) {
                       <span className={`single-vault-range-status ${active && p.inRange ? "in-range" : ""}`}>{label}</span>
                     </header>
                     <div className="single-vault-lp-value">
-                      <span>Position value</span>
+                      <span>{t("lp.value")}</span>
                       <strong>{formatUsd(usdgToNumber(p.assets))}</strong>
                     </div>
-                    <div className="single-vault-range" role="img" aria-label={`${active ? "LP" : "Configured"} range: ${money(p.lower)} to ${money(p.upper)}. Current pool price ${money(p.current)}.`}>
+                    <div className="single-vault-range" role="img" aria-label={t("lp.rangeAria", { kind: active ? t("lp.rangeKindLp") : t("lp.rangeKindConfigured"), lower: money(p.lower), upper: money(p.upper), current: money(p.current) })}>
                       <div className="single-vault-range-track">{pct !== null ? <i style={{ left: `${pct}%` }} /> : null}</div>
                     </div>
                     <dl className="single-vault-price-grid">
                       <div>
-                        <dt>Lower price</dt>
+                        <dt>{t("lp.lowerPrice")}</dt>
                         <dd>{money(p.lower)}</dd>
                       </div>
                       <div>
-                        <dt>Current pool price</dt>
+                        <dt>{t("lp.currentPrice")}</dt>
                         <dd>{money(p.current)}</dd>
                       </div>
                       <div>
-                        <dt>Upper price</dt>
+                        <dt>{t("lp.upperPrice")}</dt>
                         <dd>{money(p.upper)}</dd>
                       </div>
                     </dl>
-                    {!active ? (
-                      <p className="single-vault-caption">{p.status === "waiting" ? "Configured range shown. Your first deposit opens the LP when market checks permit." : "The displayed range does not indicate an earning LP position."}</p>
-                    ) : null}
+                    {!active ? <p className="single-vault-caption">{p.status === "waiting" ? t("lp.captionWaiting") : t("lp.captionInactive")}</p> : null}
                     {isV4 && v4?.poolId ? (
                       <p className="single-vault-caption">
-                        V4 pool ID: <code style={{ overflowWrap: "anywhere" }}>{v4.poolId}</code>
+                        {t("lp.poolId")} <code style={{ overflowWrap: "anywhere" }}>{v4.poolId}</code>
                       </p>
                     ) : null}
                     <footer>
-                      <span>Target allocation {p.targetWeightBps === null ? "–" : `${p.targetWeightBps / 100}%`}</span>
+                      <span>{t("lp.target", { value: p.targetWeightBps === null ? "–" : `${p.targetWeightBps / 100}%` })}</span>
                       <a href={explorerAddress(entry.pool)} target="_blank" rel="noreferrer">
-                        {isV4 ? "View LP venue ↗" : "View pool ↗"}
+                        {isV4 ? t("lp.viewVenue") : t("lp.viewPool")}
                       </a>
                     </footer>
                   </article>
@@ -254,44 +270,44 @@ export function ManagedVaultWorkspace({ pin }: { pin: VaultPin }) {
               })
             )
           ) : (
-            <div className="single-vault-empty">Refreshing live positions. Values appear when the connection is available.</div>
+            <div className="single-vault-empty">{t("lp.refreshing")}</div>
           )}
           <div className="sv-two">
             <div className="sv-card sv-vault-details">
               <div className="sv-card-head">
                 <div>
-                  <h2>Vault details</h2>
-                  <p>Cash and share information</p>
+                  <h2>{t("details.title")}</h2>
+                  <p>{t("details.subtitle")}</p>
                 </div>
               </div>
               <dl>
                 <div>
-                  <dt>Available cash · USDG</dt>
+                  <dt>{t("details.cash")}</dt>
                   <dd>{holdings?.idleAssets != null ? (Number(holdings.idleAssets) / 1e6).toLocaleString("en-US", { style: "currency", currency: "USD", minimumFractionDigits: 2, maximumFractionDigits: 6 }) : "–"}</dd>
                 </div>
                 <div>
-                  <dt>Share price</dt>
+                  <dt>{t("details.sharePrice")}</dt>
                   <dd>{formatPrice(sharePrice)}</dd>
                 </div>
               </dl>
-              <p className="single-vault-caption">Cash is held outside the LP. Share price is the USDG value of one whole vault share.</p>
+              <p className="single-vault-caption">{t("details.caption")}</p>
             </div>
             <div className="sv-card">
               <div className="sv-card-head">
                 <div>
-                  <h2>Contracts</h2>
-                  <p>Verified against the reviewed deployment before every action</p>
+                  <h2>{t("contracts.title")}</h2>
+                  <p>{t("contracts.subtitle")}</p>
                 </div>
               </div>
               <div className="sv-contracts">
                 {[
-                  ["Vault", entry.vault],
-                  ["Stock Token", stockToken],
-                  ["Entry router", entry.router],
-                  ["LP position", entry.position],
-                ].map(([label, address]) => (
-                  <div key={label}>
-                    <span>{label}</span>
+                  ["vault", entry.vault],
+                  ["stockToken", stockToken],
+                  ["router", entry.router],
+                  ["position", entry.position],
+                ].map(([key, address]) => (
+                  <div key={key}>
+                    <span>{t(`contracts.${key}`)}</span>
                     <a href={explorerAddress(address)} target="_blank" rel="noreferrer">
                       <code>{short(address)}</code> ↗
                     </a>
@@ -301,17 +317,10 @@ export function ManagedVaultWorkspace({ pin }: { pin: VaultPin }) {
             </div>
           </div>
           <details className="single-vault-methodology">
-            <summary>About this strategy &amp; APR</summary>
-            <p>
-              Deposit USDG for a share of managed {symbol}/USDG liquidity. Withdraw your share as pool tokens, or receive USDG when a protected swap
-              quote is available. Deposits and withdrawals execute in your wallet transaction.
-            </p>
-            <p>
-              The fee APR annualizes recorded trading fees over the available portion of the last 24 hours, divides it by observed capital over
-              time, and deducts protocol fees. It excludes token price gains and swap or rebalance costs. Short observation windows can produce
-              volatile annualized estimates. No return is guaranteed.
-            </p>
-            <p>Recovery payments, when applicable, are claimed separately by eligible holders.</p>
+            <summary>{t("method.summary")}</summary>
+            <p>{t("method.p1", { symbol })}</p>
+            <p>{t("method.p2")}</p>
+            <p>{t("method.p3")}</p>
           </details>
         </section>
         <div className="single-vault-deposit-panel">

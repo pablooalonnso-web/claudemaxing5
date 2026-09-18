@@ -5,6 +5,8 @@ import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { encodeFunctionData, formatUnits, parseUnits, type Address, type Hex } from "viem";
 import { useWallet } from "@/components/wallet/WalletProvider";
+import { useT } from "@/i18n/client";
+import type { TFunction } from "@/i18n";
 import { erc20Abi, lendingMarketAbi } from "@/lib/abis";
 import { BRAND } from "@/lib/brand";
 import { explorerTx, publicClient, robinhoodChain } from "@/lib/chain";
@@ -12,7 +14,7 @@ import { formatRate18, formatUnitsFixed } from "@/lib/format";
 import { describeTxError } from "@/lib/managed-vault";
 import type { LendingMarketPin } from "@/lib/registry";
 import type { LendingMarketRow, LendingPosition } from "@/server/lending";
-import { useLendingMarkets } from "./LendingDirectory";
+import { stateLabel, useLendingMarkets } from "./LendingDirectory";
 import { Term, TIPS } from "./LendingTip";
 
 type Role = "earn" | "borrow";
@@ -21,10 +23,10 @@ type Action = "lend" | "withdraw" | "pledge" | "borrow" | "repay" | "unlock";
 const fmt6 = (raw: string | bigint, f = 2) => formatUnitsFixed(typeof raw === "bigint" ? raw.toString() : raw, 6, f);
 const fmt18 = (raw: bigint) => Number(formatUnits(raw, 18)).toLocaleString(undefined, { maximumSignificantDigits: 7 });
 
-function parseAmount(value: string, decimals: number) {
-  if (!/^(?:0|[1-9][0-9]*)(?:\.[0-9]+)?$/.test(value) || (value.split(".")[1]?.length ?? 0) > decimals) throw new Error("Enter a valid amount");
+function parseAmount(value: string, decimals: number, t: TFunction) {
+  if (!/^(?:0|[1-9][0-9]*)(?:\.[0-9]+)?$/.test(value) || (value.split(".")[1]?.length ?? 0) > decimals) throw new Error(t("ws.err.invalidAmount"));
   const raw = parseUnits(value, decimals);
-  if (raw <= 0n) throw new Error("Enter an amount above zero");
+  if (raw <= 0n) throw new Error(t("ws.err.aboveZero"));
   return raw;
 }
 
@@ -40,6 +42,7 @@ function CheckItem({ children }: { children: React.ReactNode }) {
 }
 
 export function LendingMarketWorkspace({ pin, initial }: { pin: LendingMarketPin; initial: LendingMarketRow | null }) {
+  const t = useT("lending");
   const params = useSearchParams();
   const { rows } = useLendingMarkets(initial ? [initial] : null);
   const market = rows?.find((r) => r.pinId === pin.id) ?? initial;
@@ -83,8 +86,8 @@ export function LendingMarketWorkspace({ pin, initial }: { pin: LendingMarketPin
 
   useEffect(() => {
     void refreshOwner();
-    const t = setInterval(refreshOwner, 15_000);
-    return () => clearInterval(t);
+    const timer = setInterval(refreshOwner, 15_000);
+    return () => clearInterval(timer);
   }, [refreshOwner]);
 
   const acc = market?.accounting;
@@ -97,24 +100,24 @@ export function LendingMarketWorkspace({ pin, initial }: { pin: LendingMarketPin
   const maxLtv = market ? Number(market.config.maxLtvBps) / 100 : null;
 
   async function send(to: Address, data: Hex, label: string) {
-    if (!walletClient || !owner) throw new Error("Connect your wallet");
+    if (!walletClient || !owner) throw new Error(t("ws.err.connect"));
     const client = publicClient();
     await client.call({ account: owner, to, data });
     const gas = await client.estimateGas({ account: owner, to, data });
-    setStatus(`Confirm ${label} in your wallet.`);
+    setStatus(t("ws.status.confirm", { label }));
     const tx = await walletClient.sendTransaction({ account: owner, chain: robinhoodChain, to, data, value: 0n, gas: (gas * 125n + 99n) / 100n });
     setHash(tx);
-    setStatus("Waiting for confirmation…");
+    setStatus(t("ws.status.waiting"));
     const receipt = await client.waitForTransactionReceipt({ hash: tx, timeout: 120_000, pollingInterval: 1000 });
-    if (receipt.status !== "success") throw new Error("Transaction reverted; no change was completed.");
+    if (receipt.status !== "success") throw new Error(t("ws.err.reverted"));
   }
 
   async function ensureAllowance(token: Address, needed: bigint) {
     if (!owner) return;
     const current = await publicClient().readContract({ address: token, abi: erc20Abi, functionName: "allowance", args: [owner, pin.market as Address] });
     if (current >= needed) return;
-    if (current > 0n) await send(token, encodeFunctionData({ abi: erc20Abi, functionName: "approve", args: [pin.market as Address, 0n] }), "approval reset");
-    await send(token, encodeFunctionData({ abi: erc20Abi, functionName: "approve", args: [pin.market as Address, needed] }), "approval");
+    if (current > 0n) await send(token, encodeFunctionData({ abi: erc20Abi, functionName: "approve", args: [pin.market as Address, 0n] }), t("ws.tx.approvalReset"));
+    await send(token, encodeFunctionData({ abi: erc20Abi, functionName: "approve", args: [pin.market as Address, needed] }), t("ws.tx.approval"));
   }
 
   async function run() {
@@ -123,45 +126,45 @@ export function LendingMarketWorkspace({ pin, initial }: { pin: LendingMarketPin
     setBusy(true);
     setError("");
     setHash(null);
-    setStatus("Checking the market…");
+    setStatus(t("ws.status.checking"));
     try {
       if (chainId !== robinhoodChain.id) await switchChain();
       const marketAddress = pin.market as Address;
       const call = (fn: "supply" | "withdraw" | "pledge" | "withdrawCollateral" | "borrow", value: bigint) =>
         encodeFunctionData({ abi: lendingMarketAbi, functionName: fn, args: [value] });
       if (action === "lend") {
-        const raw = parseAmount(amount, decimals);
+        const raw = parseAmount(amount, decimals, t);
         await ensureAllowance(pin.usdg as Address, raw);
-        await send(marketAddress, call("supply", raw), "lending");
+        await send(marketAddress, call("supply", raw), t("ws.tx.lending"));
       } else if (action === "withdraw") {
-        const raw = parseAmount(amount, decimals);
-        if (!position || !market) throw new Error("Your position is still loading");
+        const raw = parseAmount(amount, decimals, t);
+        if (!position || !market) throw new Error(t("ws.err.positionLoading"));
         const tss = BigInt(market.accounting.totalSupplyShares);
         const supplied = BigInt(market.accounting.supplied);
         const units = supplied === 0n ? 0n : (raw * tss + supplied - 1n) / supplied;
         const capped = units > BigInt(position.supplyShares) ? BigInt(position.supplyShares) : units;
-        if (capped === 0n) throw new Error("Enter an amount within your position");
-        await send(marketAddress, call("withdraw", capped), "withdrawal");
+        if (capped === 0n) throw new Error(t("ws.err.withinPosition"));
+        await send(marketAddress, call("withdraw", capped), t("ws.tx.withdrawal"));
       } else if (action === "pledge") {
-        const raw = parseAmount(amount, 18);
+        const raw = parseAmount(amount, 18, t);
         await ensureAllowance(pin.vault as Address, raw);
-        await send(marketAddress, call("pledge", raw), "collateral lock");
+        await send(marketAddress, call("pledge", raw), t("ws.tx.collateralLock"));
       } else if (action === "unlock") {
-        const raw = parseAmount(amount, 18);
-        await send(marketAddress, call("withdrawCollateral", raw), "collateral unlock");
+        const raw = parseAmount(amount, 18, t);
+        await send(marketAddress, call("withdrawCollateral", raw), t("ws.tx.collateralUnlock"));
       } else if (action === "borrow") {
-        const raw = parseAmount(amount, decimals);
-        await send(marketAddress, call("borrow", raw), "borrow");
+        const raw = parseAmount(amount, decimals, t);
+        await send(marketAddress, call("borrow", raw), t("ws.tx.borrow"));
       } else if (action === "repay") {
-        const raw = parseAmount(amount, decimals);
+        const raw = parseAmount(amount, decimals, t);
         await ensureAllowance(pin.usdg as Address, raw);
-        await send(marketAddress, encodeFunctionData({ abi: lendingMarketAbi, functionName: "repay", args: [owner, raw] }), "repayment");
+        await send(marketAddress, encodeFunctionData({ abi: lendingMarketAbi, functionName: "repay", args: [owner, raw] }), t("ws.tx.repayment"));
       }
-      setStatus("Transaction confirmed. Updating your position…");
+      setStatus(t("ws.status.confirmedUpdating"));
       window.dispatchEvent(new Event(BRAND.vaultUpdatedEvent));
       await refreshOwner();
       setAmount("");
-      setStatus("Transaction complete. Your position is updated.");
+      setStatus(t("ws.status.complete"));
     } catch (e) {
       setStatus("");
       setError(describeTxError(e));
@@ -180,35 +183,35 @@ export function LendingMarketWorkspace({ pin, initial }: { pin: LendingMarketPin
     const maxBorrow = position ? fmt6(position.maxBorrow) : "–";
     switch (action) {
       case "lend":
-        return { label: "You lend", unit: "USDG", balance: balUsdg, balanceRaw: balances?.usdg ?? null, dec: decimals, cta: "Lend", bullets: ["Your USDG moves from your wallet into the market", `You start earning the current ${supplyRate} rate, paid by borrowers`, "You can withdraw later when enough USDG is not borrowed and the market's pricing and state allow it", "Nothing is locked for a fixed time"] };
+        return { label: t("action.lend.label"), unit: "USDG", balance: balUsdg, balanceRaw: balances?.usdg ?? null, dec: decimals, cta: t("action.lend.cta"), bullets: [t("action.lend.b1"), t("action.lend.b2", { rate: supplyRate }), t("action.lend.b3"), t("action.lend.b4")] };
       case "withdraw":
-        return { label: "You withdraw", unit: "USDG", balance: lentValue, balanceRaw: position ? BigInt(position.suppliedValue) : null, dec: decimals, cta: "Withdraw", bullets: ["USDG plus earned interest returns to your wallet", "Limited to what is not currently borrowed", "Needs a current share price and an open market"] };
+        return { label: t("action.withdraw.label"), unit: "USDG", balance: lentValue, balanceRaw: position ? BigInt(position.suppliedValue) : null, dec: decimals, cta: t("action.withdraw.cta"), bullets: [t("action.withdraw.b1"), t("action.withdraw.b2"), t("action.withdraw.b3")] };
       case "pledge":
-        return { label: "You lock", unit: `${symbol} vault shares`, balance: balShares, balanceRaw: balances?.shares ?? null, dec: 18, cta: "Lock shares", bullets: ["Your vault shares move into the market as collateral", "They keep earning vault fees while locked", `You can borrow up to ${maxLtv ?? "–"}% of their value in USDG`] };
+        return { label: t("action.pledge.label"), unit: t("ws.form.shares", { symbol }), balance: balShares, balanceRaw: balances?.shares ?? null, dec: 18, cta: t("action.pledge.cta"), bullets: [t("action.pledge.b1"), t("action.pledge.b2"), t("action.pledge.b3", { ltv: maxLtv ?? "–" })] };
       case "unlock":
-        return { label: "You unlock", unit: `${symbol} vault shares`, balance: locked, balanceRaw: position ? BigInt(position.collateralShares) : null, dec: 18, cta: "Unlock shares", bullets: ["Shares return to your wallet", "Your loan must stay backed after the unlock", "Needs a current share price and an open market"] };
+        return { label: t("action.unlock.label"), unit: t("ws.form.shares", { symbol }), balance: locked, balanceRaw: position ? BigInt(position.collateralShares) : null, dec: 18, cta: t("action.unlock.cta"), bullets: [t("action.unlock.b1"), t("action.unlock.b2"), t("action.unlock.b3")] };
       case "borrow":
-        return { label: "You borrow", unit: "USDG", balance: maxBorrow, balanceRaw: position ? BigInt(position.maxBorrow) : null, dec: decimals, cta: "Borrow", bullets: [`USDG is sent to your wallet; you pay the current ${borrowRate} rate`, "Interest is added to what you owe; nothing is taken from your shares automatically", "If your locked shares fall in value the market can sell them to repay the loan"] };
+        return { label: t("action.borrow.label"), unit: "USDG", balance: maxBorrow, balanceRaw: position ? BigInt(position.maxBorrow) : null, dec: decimals, cta: t("action.borrow.cta"), bullets: [t("action.borrow.b1", { rate: borrowRate }), t("action.borrow.b2"), t("action.borrow.b3")] };
       case "repay":
-        return { label: "You repay", unit: "USDG", balance: debt, balanceRaw: position ? BigInt(position.debt) : null, dec: decimals, cta: "Repay", bullets: ["USDG moves from your wallet to the market", "Your loan and its interest decrease", "Repaying everything lets you unlock all your shares"] };
+        return { label: t("action.repay.label"), unit: "USDG", balance: debt, balanceRaw: position ? BigInt(position.debt) : null, dec: decimals, cta: t("action.repay.cta"), bullets: [t("action.repay.b1"), t("action.repay.b2"), t("action.repay.b3")] };
     }
-  }, [action, balances, position, decimals, supplyRate, borrowRate, symbol, maxLtv]);
+  }, [action, balances, position, decimals, supplyRate, borrowRate, symbol, maxLtv, t]);
 
   const setPct = (pct: number) => {
     if (!actionMeta.balanceRaw) return;
     setAmount(formatUnits((actionMeta.balanceRaw * BigInt(pct)) / 100n, actionMeta.dec));
   };
 
-  const tabs: [Action, string][] = role === "earn" ? [["lend", "Lend"], ["withdraw", "Withdraw"]] : [["borrow", "Borrow"], ["repay", "Repay"], ["pledge", "Lock shares"], ["unlock", "Unlock"]];
+  const tabs: [Action, string][] = role === "earn" ? [["lend", t("ws.tab.lend")], ["withdraw", t("ws.tab.withdraw")]] : [["borrow", t("ws.tab.borrow")], ["repay", t("ws.tab.repay")], ["pledge", t("ws.tab.pledge")], ["unlock", t("ws.tab.unlock")]];
 
   return (
     <div className="ln-page ln-v2 masthead-page">
       <section className="masthead masthead-bleed">
         <div className="masthead-inner">
-          <nav className="masthead-crumb ln-breadcrumb" aria-label="Breadcrumb">
-            <Link href="/lending">Lending</Link>
+          <nav className="masthead-crumb ln-breadcrumb" aria-label={t("ws.crumb.aria")}>
+            <Link href="/lending">{t("ws.crumb.lending")}</Link>
             <span>/</span>
-            <span>{symbol} vault shares → USDG</span>
+            <span>{t("ws.pair", { symbol })}</span>
           </nav>
           <div className="masthead-head">
             <div className="masthead-identity ln-market-head">
@@ -223,14 +226,14 @@ export function LendingMarketWorkspace({ pin, initial }: { pin: LendingMarketPin
                 </span>
               </span>
               <div>
-                <h1>{symbol} vault shares → USDG</h1>
+                <h1>{t("ws.pair", { symbol })}</h1>
                 <div className="masthead-tags ln-meta">
-                  <span className={`vault-table-tag ${active ? "vault-table-tag-open" : "vault-table-tag-paused"}`}>{market?.contractState.name ?? "Checking"}</span>
+                  <span className={`vault-table-tag ${active ? "vault-table-tag-open" : "vault-table-tag-paused"}`}>{market ? stateLabel(t, market.contractState.name) : t("state.checking")}</span>
                   <span className="dtag">
-                    Borrow USDG against {symbol} vault shares{" "}
-                    <Term label="" title="Vault shares" tip={`Your share of a ${BRAND.name} vault. Their value follows the vault’s Stock Token position and the fees it earns.`} />
+                    {t("ws.tag.borrowAgainst", { symbol })}{" "}
+                    <Term label="" title={t("ws.tag.vaultShares")} tip={t("ws.tag.vaultSharesTip", { brand: BRAND.name })} />
                   </span>
-                  <span className="dtag">Share prices {priceOk ? "available" : "unavailable"}</span>
+                  <span className="dtag">{priceOk ? t("ws.tag.priceAvailable") : t("ws.tag.priceUnavailable")}</span>
                 </div>
               </div>
             </div>
@@ -238,49 +241,49 @@ export function LendingMarketWorkspace({ pin, initial }: { pin: LendingMarketPin
           <div className="ln-stats">
             <div>
               <small>
-                <Term label="Lent to this market" tip={TIPS.lent} />
+                <Term label={t("ws.stat.lentToMarket")} tip={t(TIPS.lent)} />
               </small>
               <strong>{acc ? fmt6(acc.supplied) : "–"}</strong>
               <small>
-                <Term label={`${util.toFixed(2)}% currently borrowed`} title="Currently borrowed" tip={TIPS.utilised} />
+                <Term label={t("ws.stat.utilBorrowed", { util: util.toFixed(2) })} title={t("ws.stat.currentlyBorrowed")} tip={t(TIPS.utilised)} />
               </small>
             </div>
             <div>
               <small>
-                <Term label="Borrowed" tip={TIPS.borrowed} />
+                <Term label={t("ws.stat.borrowed")} tip={t(TIPS.borrowed)} />
               </small>
               <strong>{acc ? fmt6(acc.borrowed) : "–"}</strong>
-              <small>Including interest</small>
+              <small>{t("ws.stat.inclInterest")}</small>
             </div>
             <div>
               <small>
-                <Term label="Available to borrow" tip={TIPS.available} />
+                <Term label={t("ws.stat.available")} tip={t(TIPS.available)} />
               </small>
               <strong>{acc ? fmt6(acc.cash) : "–"}</strong>
-              <small>Not yet lent out</small>
+              <small>{t("ws.stat.notLent")}</small>
             </div>
             <div className="up">
               <small>
-                <Term label="Borrowers pay" tip={TIPS.borrowersPay} />
+                <Term label={t("ws.stat.borrowersPay")} tip={t(TIPS.borrowersPay)} />
               </small>
               <strong>{borrowRate}</strong>
               <small>
-                <Term label="Variable APR" tip={TIPS.variable} />
+                <Term label={t("ws.stat.variableApr")} tip={t(TIPS.variable)} />
               </small>
             </div>
             <div className="up">
               <small>
-                <Term label="Lenders earn" tip={TIPS.lendersEarn} />
+                <Term label={t("ws.stat.lendersEarn")} tip={t(TIPS.lendersEarn)} />
               </small>
               <strong>{supplyRate}</strong>
               <small>
-                <Term label="Variable APR" tip={TIPS.variable} />
+                <Term label={t("ws.stat.variableApr")} tip={t(TIPS.variable)} />
               </small>
             </div>
           </div>
         </div>
       </section>
-      <nav className="ln-role-switch" aria-label="What do you want to do?">
+      <nav className="ln-role-switch" aria-label={t("ws.role.aria")}>
         <button type="button" aria-pressed={role === "earn"} onClick={() => setRole("earn")}>
           <span className="ln-role-icon" aria-hidden="true">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
@@ -290,8 +293,8 @@ export function LendingMarketWorkspace({ pin, initial }: { pin: LendingMarketPin
               <path d="M15 9.6c3.4.2 6 1.3 6 2.6v5c0 1.4-2.7 2.6-6 2.6" />
             </svg>
           </span>
-          <strong>Earn interest</strong>
-          <span>Lend your USDG to borrowers. Withdraw when the market has unborrowed USDG, a current price and is open.</span>
+          <strong>{t("ws.role.earn")}</strong>
+          <span>{t("ws.role.earnDesc")}</span>
         </button>
         <button type="button" aria-pressed={role === "borrow"} onClick={() => setRole("borrow")}>
           <span className="ln-role-icon" aria-hidden="true">
@@ -301,69 +304,69 @@ export function LendingMarketWorkspace({ pin, initial }: { pin: LendingMarketPin
               <circle cx="12" cy="15.5" r="1.3" />
             </svg>
           </span>
-          <strong>Borrow USDG</strong>
-          <span>Lock your {symbol} vault shares as collateral and borrow against them.</span>
+          <strong>{t("ws.role.borrow")}</strong>
+          <span>{t("ws.role.borrowDesc", { symbol })}</span>
         </button>
       </nav>
       {role === "earn" ? (
         <section className="sv-card ln-supply-hero">
           <div>
-            <p className="eyebrow">Earn interest</p>
-            <h2>{owner ? (position && BigInt(position.supplyShares) > 0n ? "Your USDG is earning" : "Lend USDG to this market") : "Connect your wallet to lend USDG"}</h2>
-            <p>Borrowers pay interest on what they use. Your USDG is not locked for a set time, but withdrawals are limited to what is not currently borrowed and need a current share price and an open market.</p>
+            <p className="eyebrow">{t("ws.earn.eyebrow")}</p>
+            <h2>{owner ? (position && BigInt(position.supplyShares) > 0n ? t("ws.earn.earning") : t("ws.earn.lendTo")) : t("ws.earn.connect")}</h2>
+            <p>{t("ws.earn.desc")}</p>
           </div>
           <div className="ln-kv">
             <div>
               <span>
-                <Term label="Lent to this market" tip={TIPS.lent} />
+                <Term label={t("ws.stat.lentToMarket")} tip={t(TIPS.lent)} />
               </span>
               <strong>{acc ? fmt6(acc.supplied) : "–"} USDG</strong>
-              <small>By all lenders</small>
+              <small>{t("ws.earn.byAll")}</small>
             </div>
             <div>
               <span>
-                <Term label="Lenders earn" tip={TIPS.lendersEarn} />
+                <Term label={t("ws.stat.lendersEarn")} tip={t(TIPS.lendersEarn)} />
               </span>
               <strong>{supplyRate}</strong>
-              <small>Variable APR · not a forecast</small>
+              <small>{t("ws.earn.notForecast")}</small>
             </div>
             <div>
               <span>
-                <Term label="Not currently borrowed" title="Available to borrow" tip={TIPS.available} />
+                <Term label={t("ws.earn.notBorrowed")} title={t("ws.stat.available")} tip={t(TIPS.available)} />
               </span>
               <strong>{acc ? fmt6(acc.cash) : "–"} USDG</strong>
-              <small>Withdrawals are limited to this</small>
+              <small>{t("ws.earn.withdrawLimited")}</small>
             </div>
           </div>
         </section>
       ) : (
         <section className="sv-card ln-supply-hero">
           <div>
-            <p className="eyebrow">Borrow USDG</p>
-            <h2>{owner ? (position && BigInt(position.debt) > 0n ? "Your loan" : `Lock ${symbol} vault shares to borrow`) : "Connect your wallet to borrow USDG"}</h2>
-            <p>Lock {symbol} vault shares as collateral. Your shares keep earning vault fees while the loan stays backed by shares worth more than what you owe.</p>
+            <p className="eyebrow">{t("ws.borrow.eyebrow")}</p>
+            <h2>{owner ? (position && BigInt(position.debt) > 0n ? t("ws.borrow.yourLoan") : t("ws.borrow.lockToBorrow", { symbol })) : t("ws.borrow.connect")}</h2>
+            <p>{t("ws.borrow.desc", { symbol })}</p>
           </div>
           <div className="ln-kv">
             <div>
               <span>
-                <Term label="Borrow limit" title="Loan-to-value" tip={TIPS.ltv} />
+                <Term label={t("ws.borrow.limit")} title={t("ws.borrow.ltv")} tip={t(TIPS.ltv)} />
               </span>
               <strong>{maxLtv !== null ? `${maxLtv}%` : "–"}</strong>
-              <small>Of locked share value</small>
+              <small>{t("ws.borrow.ofLocked")}</small>
             </div>
             <div>
               <span>
-                <Term label="Borrowers pay" tip={TIPS.borrowersPay} />
+                <Term label={t("ws.stat.borrowersPay")} tip={t(TIPS.borrowersPay)} />
               </span>
               <strong>{borrowRate}</strong>
-              <small>Variable APR · not a forecast</small>
+              <small>{t("ws.earn.notForecast")}</small>
             </div>
             <div>
               <span>
-                <Term label="Health factor" tip={TIPS.healthFactor} />
+                <Term label={t("ws.borrow.health")} tip={t(TIPS.healthFactor)} />
               </span>
-              <strong>{position ? (position.healthFactor === null ? "No loan" : position.healthFactor.toFixed(2)) : "–"}</strong>
-              <small>{position ? `Owe ${fmt6(position.debt)} USDG · ${fmt18(BigInt(position.collateralShares))} shares locked` : "Connect wallet to view"}</small>
+              <strong>{position ? (position.healthFactor === null ? t("ws.borrow.noLoan") : position.healthFactor.toFixed(2)) : "–"}</strong>
+              <small>{position ? t("ws.borrow.oweSummary", { debt: fmt6(position.debt), shares: fmt18(BigInt(position.collateralShares)) }) : t("ws.borrow.connectToView")}</small>
             </div>
           </div>
         </section>
@@ -371,18 +374,18 @@ export function LendingMarketWorkspace({ pin, initial }: { pin: LendingMarketPin
       <div className="ln-grid">
         <div className="ln-col">
           <section className="sv-card">
-            <h2>How lending works</h2>
+            <h2>{t("ws.how.title")}</h2>
             <div className="ln-path ln-path-static">
               {(role === "earn"
                 ? [
-                    ["Lend USDG", "Your USDG joins the market’s pool. You receive a share of the pool that grows with interest."],
-                    ["Borrowers use it", `Loans are always backed by locked ${symbol} vault shares worth more than the loan.`],
-                    ["Withdraw", "Take out your USDG plus interest when enough is not borrowed and the market’s pricing and state allow it."],
+                    [t("ws.how.earn1.title"), t("ws.how.earn1.copy")],
+                    [t("ws.how.earn2.title"), t("ws.how.earn2.copy", { symbol })],
+                    [t("ws.how.earn3.title"), t("ws.how.earn3.copy")],
                   ]
                 : [
-                    ["Lock shares", `Move ${symbol} vault shares into the market as collateral. They keep earning vault fees.`],
-                    ["Borrow USDG", `Draw USDG up to ${maxLtv ?? "–"}% of the locked value. Interest accrues on what you owe.`],
-                    ["Repay and unlock", "Repay any time. Once the loan is cleared, unlock every share back to your wallet."],
+                    [t("ws.how.borrow1.title"), t("ws.how.borrow1.copy", { symbol })],
+                    [t("ws.how.borrow2.title"), t("ws.how.borrow2.copy", { ltv: maxLtv ?? "–" })],
+                    [t("ws.how.borrow3.title"), t("ws.how.borrow3.copy")],
                   ]
               ).map(([title, copy], i) => (
                 <div className="ln-path-step" key={title}>
@@ -395,41 +398,42 @@ export function LendingMarketWorkspace({ pin, initial }: { pin: LendingMarketPin
               ))}
             </div>
             <p className="ln-note">
-              Every loan must stay backed by locked shares worth more than the loan. If a liquidation is delayed and losses exceed the{" "}
-              <Term label="market’s reserve" title="Market reserve" tip={TIPS.reserve} />, the value of lent USDG can decrease.
+              {t("ws.how.note.before")}
+              <Term label={t("ws.how.note.reserve")} title={t("ws.how.note.reserveTitle")} tip={t(TIPS.reserve)} />
+              {t("ws.how.note.after")}
             </p>
           </section>
           <section className="sv-card">
             <div className="sv-card-head">
               <div>
-                <h2>Before you sign</h2>
-                <p>Checked again the moment you confirm.</p>
+                <h2>{t("ws.sign.title")}</h2>
+                <p>{t("ws.sign.desc")}</p>
               </div>
             </div>
             <div className="ln-kv">
               <div>
                 <span>
-                  <Term label="Price used for loans" tip={TIPS.loanPrice} />
+                  <Term label={t("ws.sign.loanPrice")} tip={t(TIPS.loanPrice)} />
                 </span>
-                <strong className="ln-kv-text">{priceOk ? "Available" : "Unavailable"}</strong>
-                <small>A little below market, on purpose</small>
+                <strong className="ln-kv-text">{priceOk ? t("ws.sign.available") : t("ws.sign.unavailable")}</strong>
+                <small>{t("ws.sign.belowMarket")}</small>
               </div>
               <div>
-                <span>Withdrawal price</span>
-                <strong className="ln-kv-text">{priceOk ? "Available" : "Unavailable"}</strong>
-                <small>Used when shares are unlocked or sold</small>
+                <span>{t("ws.sign.withdrawalPrice")}</span>
+                <strong className="ln-kv-text">{priceOk ? t("ws.sign.available") : t("ws.sign.unavailable")}</strong>
+                <small>{t("ws.sign.usedWhen")}</small>
               </div>
               <div>
-                <span>New loans</span>
-                <strong className="ln-kv-text">{active ? "Open" : "Paused"}</strong>
-                <small>{active ? "Market is active" : `Market is ${market?.contractState.name?.toLowerCase() ?? "unavailable"}`}</small>
+                <span>{t("ws.sign.newLoans")}</span>
+                <strong className="ln-kv-text">{active ? t("ws.sign.open") : t("ws.sign.paused")}</strong>
+                <small>{active ? t("ws.sign.marketActive") : t("ws.sign.marketIs", { state: stateLabel(t, market?.contractState.name, "stateLower") })}</small>
               </div>
             </div>
-            <p className="ln-note">Every transaction is simulated against the live market before your wallet opens. If anything changed, you see it here first.</p>
+            <p className="ln-note">{t("ws.sign.note")}</p>
           </section>
         </div>
         <aside className="ln-action">
-          <div className="tabs vault-action-tabs ln-supplier-tabs" role="tablist" aria-label={role === "earn" ? "Lend action" : "Borrow action"}>
+          <div className="tabs vault-action-tabs ln-supplier-tabs" role="tablist" aria-label={role === "earn" ? t("ws.tabs.lendAria") : t("ws.tabs.borrowAria")}>
             {tabs.map(([key, label]) => (
               <button key={key} type="button" role="tab" aria-selected={action === key} aria-pressed={action === key} className={action === key ? "active" : ""} disabled={busy} onClick={() => setAction(key)}>
                 {label}
@@ -441,7 +445,7 @@ export function LendingMarketWorkspace({ pin, initial }: { pin: LendingMarketPin
               <span className="amount-box-top">
                 <span>{actionMeta.label}</span>
                 <span>
-                  {action === "borrow" ? "Available" : "Balance"} <b>{owner ? actionMeta.balance : "–"}</b>
+                  {action === "borrow" ? t("ws.form.available") : t("ws.form.balance")} <b>{owner ? actionMeta.balance : "–"}</b>
                 </span>
               </span>
               <span className="wallet-amount-main">
@@ -458,7 +462,7 @@ export function LendingMarketWorkspace({ pin, initial }: { pin: LendingMarketPin
                 </span>
               </span>
             </label>
-            <div className="ln-amount-shortcuts" aria-label="Amount shortcuts">
+            <div className="ln-amount-shortcuts" aria-label={t("ws.form.shortcuts")}>
               <button type="button" disabled={!owner || !actionMeta.balanceRaw} onClick={() => setPct(25)}>
                 25%
               </button>
@@ -466,11 +470,11 @@ export function LendingMarketWorkspace({ pin, initial }: { pin: LendingMarketPin
                 50%
               </button>
               <button type="button" disabled={!owner || !actionMeta.balanceRaw} onClick={() => setPct(100)}>
-                Max
+                {t("ws.form.max")}
               </button>
             </div>
             <div className="ln-whathappens">
-              <h3>What happens when you confirm</h3>
+              <h3>{t("ws.form.whatHappens")}</h3>
               <ul>
                 {actionMeta.bullets.map((b) => (
                   <CheckItem key={b}>{b}</CheckItem>
@@ -479,11 +483,11 @@ export function LendingMarketWorkspace({ pin, initial }: { pin: LendingMarketPin
             </div>
             {owner ? (
               <button type="button" className="btn btn-primary btn-block managed-submit" disabled={busy || !active} onClick={() => void run()}>
-                {busy ? "Working…" : active ? actionMeta.cta : "Market paused"}
+                {busy ? t("ws.form.working") : active ? actionMeta.cta : t("ws.form.marketPaused")}
               </button>
             ) : (
               <button type="button" className="btn btn-primary btn-block managed-submit" disabled={!ready} onClick={() => void connect()}>
-                Connect wallet
+                {t("ws.form.connect")}
               </button>
             )}
           </fieldset>
@@ -496,7 +500,7 @@ export function LendingMarketWorkspace({ pin, initial }: { pin: LendingMarketPin
               ) : null}
               {hash ? (
                 <a href={explorerTx(hash)} target="_blank" rel="noreferrer">
-                  View transaction ↗
+                  {t("ws.form.viewTx")}
                 </a>
               ) : null}
               {error ? (
@@ -506,7 +510,7 @@ export function LendingMarketWorkspace({ pin, initial }: { pin: LendingMarketPin
               ) : null}
             </div>
           ) : null}
-          <p className="ln-note">If approval is needed, your wallet asks first, then returns you here. Your wallet pays network gas.</p>
+          <p className="ln-note">{t("ws.form.note")}</p>
         </aside>
       </div>
     </div>

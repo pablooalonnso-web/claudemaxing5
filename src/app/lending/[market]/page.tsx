@@ -4,6 +4,7 @@ import { Suspense } from "react";
 import { SiteFooter } from "@/components/SiteFooter";
 import { SiteHeader } from "@/components/SiteHeader";
 import { LendingMarketWorkspace } from "@/components/lending/LendingMarketWorkspace";
+import { getT } from "@/i18n/server";
 import { BRAND } from "@/lib/brand";
 import { findLendingMarket, LENDING_MARKETS } from "@/lib/registry";
 import { getLendingMarkets } from "@/server/lending";
@@ -16,7 +17,9 @@ export const dynamic = "force-dynamic";
 export async function generateMetadata({ params }: Params): Promise<Metadata> {
   const { market } = await params;
   const pin = findLendingMarket(market);
-  return { title: pin ? `${pin.symbol} lending · ${BRAND.name}` : BRAND.name };
+  if (!pin) return { title: BRAND.name };
+  const t = await getT("lending");
+  return { title: `${t("meta.marketTitle", { symbol: pin.symbol })} · ${BRAND.name}` };
 }
 
 export function generateStaticParams() {

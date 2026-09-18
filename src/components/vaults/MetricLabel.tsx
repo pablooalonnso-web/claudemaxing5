@@ -3,9 +3,11 @@
 import { Eye } from "lucide-react";
 import { useEffect, useId, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
+import { useT } from "@/i18n/client";
 
 /** Metric caption with an accessible hover / click tooltip rendered into <body>. */
 export function MetricLabel({ label, children }: { label: string; children: ReactNode }) {
+  const t = useT("vaults");
   const id = useId();
   const button = useRef<HTMLButtonElement>(null);
   const tip = useRef<HTMLDivElement>(null);
@@ -67,7 +69,7 @@ export function MetricLabel({ label, children }: { label: string; children: Reac
         ref={button}
         type="button"
         className="vault-metric-info"
-        aria-label={`About ${label.toLowerCase()}`}
+        aria-label={t("metric.about", { label: label.toLowerCase() })}
         aria-describedby={open ? id : undefined}
         aria-expanded={open}
         onPointerEnter={(e) => {

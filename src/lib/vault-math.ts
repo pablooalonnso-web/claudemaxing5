@@ -27,30 +27,33 @@ export function rangeDistances(lower: number | null, upper: number | null, curre
   return { toLower: ((lower - current) / current) * 100, toUpper: ((upper - current) / current) * 100, width: ((upper - lower) / lower) * 100 };
 }
 
-export type DepositStatus = { key: "unknown" | "paused" | "open" | "closed"; label: string };
+/** `key` drives styling and filters; `labelKey` is a stable id for the English `label`, for translation in components. */
+export type DepositStatus = { key: "unknown" | "paused" | "open" | "closed"; labelKey: "checking" | "closed" | "paused" | "open"; label: string };
 
 export function depositStatus(enabled: boolean | null | undefined, paused: boolean | null | undefined): DepositStatus {
-  if (enabled == null || paused == null) return { key: "unknown", label: "Checking" };
-  if (!enabled) return { key: "closed", label: "Deposits closed" };
-  return paused ? { key: "paused", label: "Deposits paused" } : { key: "open", label: "Open" };
+  if (enabled == null || paused == null) return { key: "unknown", labelKey: "checking", label: "Checking" };
+  if (!enabled) return { key: "closed", labelKey: "closed", label: "Deposits closed" };
+  return paused ? { key: "paused", labelKey: "paused", label: "Deposits paused" } : { key: "open", labelKey: "open", label: "Open" };
 }
 
 export type RangeStatus = {
   key: "unknown" | "none" | "recovery" | "in-range" | "out-of-range" | "waiting";
+  /** Stable id for the English `label`, for translation in components. */
+  labelKey: "checking" | "none" | "recovery" | "price-unavailable" | "in-range" | "out-of-range" | "unavailable" | "waiting";
   label: string;
 };
 
 export function rangeStatus(positions: HoldingsPosition[] | null | undefined): RangeStatus {
-  if (!positions) return { key: "unknown", label: "Checking" };
-  if (positions.length === 0) return { key: "none", label: "No pool yet" };
-  if (positions.some((p) => p.status === "recovery")) return { key: "recovery", label: "Recovery" };
+  if (!positions) return { key: "unknown", labelKey: "checking", label: "Checking" };
+  if (positions.length === 0) return { key: "none", labelKey: "none", label: "No pool yet" };
+  if (positions.some((p) => p.status === "recovery")) return { key: "recovery", labelKey: "recovery", label: "Recovery" };
   const active = positions.find((p) => p.status === "active");
   if (active) {
-    if (active.inRange === null) return { key: "unknown", label: "Price unavailable" };
-    return active.inRange ? { key: "in-range", label: "In range" } : { key: "out-of-range", label: "Out of range" };
+    if (active.inRange === null) return { key: "unknown", labelKey: "price-unavailable", label: "Price unavailable" };
+    return active.inRange ? { key: "in-range", labelKey: "in-range", label: "In range" } : { key: "out-of-range", labelKey: "out-of-range", label: "Out of range" };
   }
-  if (positions.some((p) => p.status === "unavailable")) return { key: "unknown", label: "Unavailable" };
-  return { key: "waiting", label: "Awaiting allocation" };
+  if (positions.some((p) => p.status === "unavailable")) return { key: "unknown", labelKey: "unavailable", label: "Unavailable" };
+  return { key: "waiting", labelKey: "waiting", label: "Awaiting allocation" };
 }
 
 export function primaryPosition(positions: HoldingsPosition[] | null | undefined): HoldingsPosition | null {
@@ -58,13 +61,25 @@ export function primaryPosition(positions: HoldingsPosition[] | null | undefined
   return positions.find((p) => p.status === "active") ?? positions.find((p) => p.lower !== null && p.upper !== null) ?? positions[0];
 }
 
-export function describeAprWindow(info?: { source?: string; observedSeconds?: number; stale?: boolean } | null): string {
+/** Structured form of `describeAprWindow`, so components can translate it: either still collecting, or an observed span. */
+export type AprWindow = { key: "collecting" } | { key: "observed"; unit: "day" | "hours" | "minutes"; value: string; stale: boolean };
+
+export function aprWindow(info?: { source?: string; observedSeconds?: number; stale?: boolean } | null): AprWindow {
   if (info?.source !== "vault-fees-v1" || !Number.isFinite(info.observedSeconds) || (info.observedSeconds ?? 0) < 60) {
-    return "Collecting fee history";
+    return { key: "collecting" };
   }
   const hours = (info.observedSeconds ?? 0) / 3600;
-  const span = hours >= 24 ? "24 hours" : hours >= 1 ? `${hours.toFixed(1)} hours` : `${Math.floor((info.observedSeconds ?? 0) / 60)} minutes`;
-  return `Based on ${span} of observations${info.stale ? " · refresh delayed" : ""}`;
+  const stale = !!info.stale;
+  if (hours >= 24) return { key: "observed", unit: "day", value: "24", stale };
+  if (hours >= 1) return { key: "observed", unit: "hours", value: hours.toFixed(1), stale };
+  return { key: "observed", unit: "minutes", value: String(Math.floor((info.observedSeconds ?? 0) / 60)), stale };
+}
+
+export function describeAprWindow(info?: { source?: string; observedSeconds?: number; stale?: boolean } | null): string {
+  const w = aprWindow(info);
+  if (w.key === "collecting") return "Collecting fee history";
+  const span = w.unit === "day" ? "24 hours" : `${w.value} ${w.unit}`;
+  return `Based on ${span} of observations${w.stale ? " · refresh delayed" : ""}`;
 }
 
 /** Sum a raw-integer column across snapshot rows; null if any row is missing. */
