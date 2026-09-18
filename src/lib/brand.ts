@@ -17,7 +17,7 @@ export const BRAND = {
   xUrl: "https://x.com/useevertex",
   repoUrl: process.env.NEXT_PUBLIC_REPO_URL ?? "https://github.com/pablooalonnso-web/claudemaxing5",
   /** Branch the deployed site is built from; file links in the docs point at it. */
-  repoBranch: process.env.NEXT_PUBLIC_REPO_BRANCH ?? "claude/awesome-hawking-qqw4s9",
+  repoBranch: process.env.NEXT_PUBLIC_REPO_BRANCH ?? "main",
   siteUrl: process.env.NEXT_PUBLIC_SITE_URL ?? "https://usevertex.xyz",
   /** Custom DOM event name fired after a wallet transaction changes a vault. */
   vaultUpdatedEvent: "vertex:vault-updated",
