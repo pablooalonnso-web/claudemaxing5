@@ -1,0 +1,168 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-09-17T22:43:31Z",
+  "title": "Design System: Vertex",
+  "extensions": {
+    "colorMeta": {
+      "slate": { "role": "neutral", "displayName": "Slate", "canonical": "#3D3B4F", "tonalRamp": ["#15141c", "#232230", "#3D3B4F", "#5b5970", "#7b7992", "#9d9bb0", "#c2c1ce", "#e6e5ec"] },
+      "onyx": { "role": "neutral", "displayName": "Onyx", "canonical": "#2A2A2A", "tonalRamp": ["#0f0f0f", "#1c1c1c", "#2A2A2A", "#444444", "#666666", "#8c8c8c", "#b8b8b8", "#e6e6e6"] },
+      "fog": { "role": "neutral", "displayName": "Fog", "canonical": "#EEEEEE", "tonalRamp": ["#262626", "#4d4d4d", "#737373", "#999999", "#bfbfbf", "#d9d9d9", "#EEEEEE", "#f8f8f8"] },
+      "paper-grey": { "role": "neutral", "displayName": "Paper Grey", "canonical": "#E9E9E9", "tonalRamp": ["#242424", "#484848", "#6d6d6d", "#919191", "#b6b6b6", "#d0d0d0", "#E9E9E9", "#f6f6f6"] },
+      "silver": { "role": "neutral", "displayName": "Silver", "canonical": "#D6D6D6", "tonalRamp": ["#222222", "#444444", "#666666", "#888888", "#aaaaaa", "#c0c0c0", "#D6D6D6", "#efefef"] },
+      "spring-green": { "role": "primary", "displayName": "Spring Green", "canonical": "#28E99F", "tonalRamp": ["#063a26", "#0b5d3d", "#118c5c", "#18b878", "#28E99F", "#5df0b8", "#94f5d0", "#cdfae8"] },
+      "pool-green": { "role": "primary", "displayName": "Pool Green", "canonical": "#1c9a69", "tonalRamp": ["#062e1f", "#0d4c33", "#136e4a", "#1c9a69", "#2fbd85", "#66d3a8", "#a3e6ca", "#d8f5e8"] },
+      "seafoam": { "role": "primary", "displayName": "Seafoam", "canonical": "#C5FFD6", "tonalRamp": ["#0f3a20", "#1c6a3a", "#2c9a56", "#4ec27a", "#82dea3", "#a8efc0", "#C5FFD6", "#e6ffee"] },
+      "lavender": { "role": "secondary", "displayName": "Lavender", "canonical": "#FFCFFE", "tonalRamp": ["#3d0d3c", "#6d1a6b", "#9c2c9a", "#c94ec7", "#e585e3", "#f3adf2", "#FFCFFE", "#ffeaff"] },
+      "lime": { "role": "secondary", "displayName": "Lime", "canonical": "#ECFFA3", "tonalRamp": ["#2f3a08", "#54690e", "#7c9a16", "#a6c823", "#cbe655", "#dff283", "#ECFFA3", "#f6ffd4"] },
+      "magenta": { "role": "secondary", "displayName": "Magenta", "canonical": "#FFACFE", "tonalRamp": ["#3d0a3c", "#6e156c", "#a0229d", "#cf3ccb", "#eb6fe8", "#f78ff5", "#FFACFE", "#ffdcfe"] },
+      "neon": { "role": "tertiary", "displayName": "Neon", "canonical": "#DAFF01", "tonalRamp": ["#2c3300", "#4f5c00", "#788b00", "#a3bd00", "#c8e800", "#DAFF01", "#e8ff5c", "#f4ffb0"] },
+      "blueprint-blue": { "role": "tertiary", "displayName": "Blueprint Blue", "canonical": "#5882FF", "tonalRamp": ["#0c1a4d", "#162e85", "#2246b8", "#3862e0", "#5882FF", "#84a2ff", "#b2c4ff", "#dde6ff"] },
+      "ice": { "role": "tertiary", "displayName": "Ice", "canonical": "#D1E5FF", "tonalRamp": ["#0e2a52", "#1a4a8c", "#2b6cc2", "#4f8fe0", "#86b3ee", "#accdf7", "#D1E5FF", "#eaf3ff"] },
+      "sky": { "role": "tertiary", "displayName": "Sky", "canonical": "#71ADFF", "tonalRamp": ["#0c2a52", "#154a8a", "#2168bd", "#3d8ae6", "#71ADFF", "#98c4ff", "#bfdaff", "#e3efff"] },
+      "violet": { "role": "tertiary", "displayName": "Violet", "canonical": "#756CF5", "tonalRamp": ["#1c1750", "#312a8a", "#4a40bf", "#6157e3", "#756CF5", "#9a93f8", "#bfbafb", "#e3e1fd"] },
+      "ember": { "role": "tertiary", "displayName": "Ember", "canonical": "#b5633a", "tonalRamp": ["#33190d", "#5c2e18", "#864425", "#b5633a", "#cf8258", "#e0a688", "#eec8b5", "#f8e6dc"] },
+      "rule": { "role": "neutral", "displayName": "Rule", "canonical": "rgba(85,83,104,0.3)", "tonalRamp": ["rgba(85,83,104,0.9)", "rgba(85,83,104,0.75)", "rgba(85,83,104,0.6)", "rgba(85,83,104,0.45)", "rgba(85,83,104,0.3)", "rgba(85,83,104,0.2)", "rgba(85,83,104,0.12)", "rgba(85,83,104,0.06)"] }
+    },
+    "typographyMeta": {
+      "display": { "displayName": "Display", "purpose": "The hero statement only; sentence case, two lines, full stop." },
+      "headline": { "displayName": "Headline", "purpose": "Section heads and page mastheads; italic for the emphasised phrase." },
+      "title": { "displayName": "Title", "purpose": "Card and frame captions, vault names, dialog headings." },
+      "body": { "displayName": "Body", "purpose": "Running copy at 65 to 76ch; ledes at 18px on desktop." },
+      "label": { "displayName": "Label", "purpose": "Bracketed section tags, chips, table headers, footer links; the only uppercase." },
+      "code": { "displayName": "Code", "purpose": "Contract addresses, hashes, pool ids and code samples." },
+      "annotation": { "displayName": "Annotation", "purpose": "Handwritten notes inside blueprint illustrations." }
+    },
+    "shadows": [
+      { "name": "card-rest", "value": "0 6px 22px -14px rgba(61,59,79,0.35)", "purpose": "Every card, stat tile, table container and diff card at rest." },
+      { "name": "card-lift", "value": "0 14px 32px -18px rgba(61,59,79,0.45)", "purpose": "Hover on interactive cards, paired with translateY(-2px)." },
+      { "name": "button-rest", "value": "0 1px 0 rgba(61,59,79,0.08)", "purpose": "Buttons at rest; card-rest on hover; none when pressed." },
+      { "name": "menu", "value": "0 16px 40px -24px rgba(61,59,79,0.4)", "purpose": "Dropdowns and popovers." }
+    ],
+    "motion": [
+      { "name": "ease-out", "value": "cubic-bezier(0.2, 0.8, 0.2, 1)", "purpose": "Standard easing for hover lifts, fills and menu slides." },
+      { "name": "duration", "value": "180ms", "purpose": "Standard state transition; press returns in 80ms." },
+      { "name": "reveal", "value": "700ms ease-out fade from a visible state", "purpose": "The single entrance used on hero blocks." },
+      { "name": "orb", "value": "requestAnimationFrame, phase += 0.0032 per frame", "purpose": "The wire orb's slow turn; paused under reduced-motion." }
+    ],
+    "breakpoints": [
+      { "name": "sm", "value": "640px" },
+      { "name": "md", "value": "768px" },
+      { "name": "lg", "value": "1024px" },
+      { "name": "xl", "value": "1920px" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "The one action per view: Spring Green pill with black text, lifts on hover, presses to 98%.",
+      "html": "<button class=\"ds-btn-primary\">Start now</button>",
+      "css": ".ds-btn-primary { display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 12px 28px; border: 1.5px solid var(--green, #28E99F); border-radius: 999px; background: var(--green, #28E99F); color: #000; font-family: var(--font-anybody, 'Instrument Sans', sans-serif); font-size: 15px; font-weight: 600; letter-spacing: -0.01em; line-height: 1.25; cursor: pointer; box-shadow: 0 1px 0 rgba(61,59,79,0.08); transition: transform 180ms cubic-bezier(.2,.8,.2,1), box-shadow 180ms cubic-bezier(.2,.8,.2,1), filter 180ms cubic-bezier(.2,.8,.2,1); } .ds-btn-primary:hover { transform: translateY(-1px); box-shadow: 0 6px 22px -14px rgba(61,59,79,0.35); filter: brightness(1.04); } .ds-btn-primary:active { transform: translateY(0) scale(0.98); box-shadow: none; transition-duration: 80ms; } .ds-btn-primary:focus-visible { outline: 2px solid var(--green, #28E99F); outline-offset: 2px; }"
+    },
+    {
+      "name": "Secondary Button",
+      "kind": "button",
+      "refersTo": "button-secondary",
+      "description": "Slate pill with Fog text for every action that is not the main one.",
+      "html": "<button class=\"ds-btn-secondary\">Read the docs</button>",
+      "css": ".ds-btn-secondary { display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 12px 28px; border: 1.5px solid var(--slate, #3D3B4F); border-radius: 999px; background: var(--slate, #3D3B4F); color: var(--fog, #EEEEEE); font-family: var(--font-anybody, 'Instrument Sans', sans-serif); font-size: 15px; font-weight: 600; letter-spacing: -0.01em; line-height: 1.25; cursor: pointer; box-shadow: 0 1px 0 rgba(61,59,79,0.08); transition: transform 180ms cubic-bezier(.2,.8,.2,1), box-shadow 180ms cubic-bezier(.2,.8,.2,1), filter 180ms cubic-bezier(.2,.8,.2,1); } .ds-btn-secondary:hover { transform: translateY(-1px); box-shadow: 0 6px 22px -14px rgba(61,59,79,0.35); filter: brightness(1.04); } .ds-btn-secondary:active { transform: translateY(0) scale(0.98); box-shadow: none; } .ds-btn-secondary:focus-visible { outline: 2px solid var(--green, #28E99F); outline-offset: 2px; }"
+    },
+    {
+      "name": "Outline Button",
+      "kind": "button",
+      "refersTo": "button-outline",
+      "description": "Transparent pill with a Slate border; hover fills Seafoam.",
+      "html": "<button class=\"ds-btn-outline\">How it works</button>",
+      "css": ".ds-btn-outline { display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 12px 28px; border: 1.5px solid var(--slate, #3D3B4F); border-radius: 999px; background: transparent; color: var(--slate, #3D3B4F); font-family: var(--font-anybody, 'Instrument Sans', sans-serif); font-size: 15px; font-weight: 600; letter-spacing: -0.01em; line-height: 1.25; cursor: pointer; transition: transform 180ms cubic-bezier(.2,.8,.2,1), box-shadow 180ms cubic-bezier(.2,.8,.2,1), background 180ms cubic-bezier(.2,.8,.2,1); } .ds-btn-outline:hover { background: rgba(197,255,214,0.45); transform: translateY(-1px); box-shadow: 0 6px 22px -14px rgba(61,59,79,0.35); } .ds-btn-outline:active { transform: translateY(0) scale(0.98); box-shadow: none; } .ds-btn-outline:focus-visible { outline: 2px solid var(--green, #28E99F); outline-offset: 2px; }"
+    },
+    {
+      "name": "Navigation",
+      "kind": "nav",
+      "refersTo": "nav-link",
+      "description": "Fog bar with a dashed rule; pill links, Seafoam on hover, Spring Green for the current section.",
+      "html": "<nav class=\"ds-nav\"><span class=\"ds-nav-mark\"><svg width=\"28\" height=\"28\" viewBox=\"0 0 32 32\" fill=\"none\"><path d=\"M6 6C11 6 14 10 14 14V18C9 18 6 14 6 10Z\" fill=\"#3D3B4F\"/><path d=\"M6 6C11 6 14 10 14 14V18C9 18 6 14 6 10Z\" transform=\"rotate(90 16 16)\" fill=\"#3D3B4F\"/><path d=\"M6 6C11 6 14 10 14 14V18C9 18 6 14 6 10Z\" transform=\"rotate(180 16 16)\" fill=\"#3D3B4F\"/><path d=\"M6 6C11 6 14 10 14 14V18C9 18 6 14 6 10Z\" transform=\"rotate(270 16 16)\" fill=\"#3D3B4F\"/></svg></span><a class=\"ds-nav-link ds-nav-link-active\" href=\"#\">Vaults</a><a class=\"ds-nav-link\" href=\"#\">Lending</a><a class=\"ds-nav-link\" href=\"#\">Trade</a><a class=\"ds-nav-link\" href=\"#\">Docs</a></nav>",
+      "css": ".ds-nav { display: flex; align-items: center; gap: 24px; padding: 12px 24px; background: var(--fog, #EEEEEE); border-bottom: 1px dashed rgba(61,59,79,0.2); } .ds-nav-mark { display: inline-flex; margin-right: 8px; } .ds-nav-link { padding: 6px 12px; border-radius: 999px; color: var(--slate, #3D3B4F); font-family: var(--font-anybody, 'Instrument Sans', sans-serif); font-size: 14px; font-weight: 500; text-decoration: none; transition: background 180ms cubic-bezier(.2,.8,.2,1), color 180ms cubic-bezier(.2,.8,.2,1); } .ds-nav-link:hover { background: var(--seafoam, #C5FFD6); } .ds-nav-link-active { background: var(--green, #28E99F); color: #000; } .ds-nav-link:focus-visible { outline: 2px solid var(--green, #28E99F); outline-offset: 2px; }"
+    },
+    {
+      "name": "Status Chip",
+      "kind": "chip",
+      "refersTo": "chip-status",
+      "description": "Pill label with a live dot; Seafoam for open, in range and active.",
+      "html": "<span class=\"ds-chip\"><i></i>Open</span> <span class=\"ds-chip ds-chip-muted\"><i></i>Coming soon</span>",
+      "css": ".ds-chip { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 999px; background: var(--seafoam, #C5FFD6); color: var(--slate, #3D3B4F); font-family: var(--font-sans, 'DM Sans', sans-serif); font-size: 10px; font-weight: 500; letter-spacing: 0.06em; text-transform: uppercase; } .ds-chip i { width: 6px; height: 6px; border-radius: 50%; background: var(--accent, #1c9a69); } .ds-chip-muted { background: var(--silver, #D6D6D6); } .ds-chip-muted i { background: rgba(61,59,79,0.55); }"
+    },
+    {
+      "name": "Card",
+      "kind": "card",
+      "refersTo": "card",
+      "description": "Fog surface with a hairline border, 16px corners and the resting shadow; lifts 2px on hover when it links somewhere.",
+      "html": "<a class=\"ds-card\" href=\"#\"><span class=\"ds-card-label\">Total value locked</span><strong class=\"ds-card-value\">$20.2K</strong><span class=\"ds-card-note\">Across 18 vaults, read from the chain and refreshed every 15 seconds.</span></a>",
+      "css": ".ds-card { display: flex; flex-direction: column; gap: 10px; padding: 24px; border: 1px solid var(--silver, #D6D6D6); border-radius: 16px; background: var(--fog, #EEEEEE); background-image: radial-gradient(circle, rgba(197,255,214,0.35) 1px, transparent 1px); background-size: 24px 24px; color: var(--slate, #3D3B4F); text-decoration: none; box-shadow: 0 6px 22px -14px rgba(61,59,79,0.35); transition: box-shadow 180ms cubic-bezier(.2,.8,.2,1), transform 180ms cubic-bezier(.2,.8,.2,1); } .ds-card:hover { transform: translateY(-2px); box-shadow: 0 14px 32px -18px rgba(61,59,79,0.45); } .ds-card-label { font-family: var(--font-sans, 'DM Sans', sans-serif); font-size: 12px; font-weight: 500; letter-spacing: 0.04em; text-transform: uppercase; } .ds-card-value { font-family: var(--font-anybody, 'Instrument Sans', sans-serif); font-size: 40px; font-weight: 700; letter-spacing: -0.04em; line-height: 1; font-variant-numeric: tabular-nums; } .ds-card-note { font-family: var(--font-sans, 'DM Sans', sans-serif); font-size: 14px; line-height: 1.5; opacity: 0.8; }"
+    },
+    {
+      "name": "Dark Card",
+      "kind": "card",
+      "refersTo": "card-dark",
+      "description": "Slate panel with Lavender text and a dashed pastel border, as used for the live vault diff cards.",
+      "html": "<div class=\"ds-card-dark\"><span class=\"ds-card-dark-file\">AAPL / USDG · Uniswap V4</span><div class=\"ds-diff ds-diff-del\"><span>01</span><span>−</span><i style=\"width:52%\"></i><em>$285.47</em></div><div class=\"ds-diff ds-diff-add\"><span>01</span><span>+</span><i style=\"width:76%\"></i><em>$335.90</em></div><div class=\"ds-diff ds-diff-add\"><span>02</span><span>+</span><i style=\"width:94%\"></i><em>$365.08</em></div><p class=\"ds-card-dark-note\">Price inside the band; fees accrue on every trade.</p></div>",
+      "css": ".ds-card-dark { display: flex; flex-direction: column; border: 1px dashed rgba(197,255,214,0.3); border-radius: 16px; background: var(--slate, #3D3B4F); color: var(--fog, #EEEEEE); overflow: hidden; box-shadow: 0 6px 22px -14px rgba(61,59,79,0.35); } .ds-card-dark-file { padding: 10px 16px; border-bottom: 1px dashed rgba(197,255,214,0.3); font-family: var(--font-sans, 'DM Sans', sans-serif); font-size: 11px; color: rgba(238,238,238,0.6); } .ds-diff { display: flex; align-items: center; gap: 12px; padding: 4px 16px; font-family: var(--font-sans, 'DM Sans', sans-serif); font-size: 11px; font-variant-numeric: tabular-nums; } .ds-diff span:first-child { width: 20px; text-align: right; } .ds-diff span:nth-child(2) { font-weight: 700; } .ds-diff i { height: 12px; border-radius: 999px; } .ds-diff em { font-style: normal; font-size: 10px; opacity: 0.7; margin-left: auto; } .ds-diff-del { background: rgba(255,172,254,0.1); color: rgba(255,172,254,0.7); } .ds-diff-del i { background: rgba(255,172,254,0.4); } .ds-diff-add { background: rgba(197,255,214,0.1); color: rgba(40,233,159,0.8); } .ds-diff-add i { background: rgba(197,255,214,0.4); } .ds-card-dark-note { margin: 0; padding: 12px 16px; font-family: var(--font-anybody, 'Instrument Sans', sans-serif); font-size: 14px; font-weight: 700; line-height: 1.2; color: var(--fog, #EEEEEE); }"
+    },
+    {
+      "name": "Amount Input",
+      "kind": "input",
+      "refersTo": "input",
+      "description": "Fog field with a hairline border; hover darkens it, focus turns it Pool Green with a soft tint ring.",
+      "html": "<label class=\"ds-field\"><span class=\"ds-field-label\">You deposit</span><input class=\"ds-input\" type=\"text\" inputmode=\"decimal\" placeholder=\"0.00\" /></label>",
+      "css": ".ds-field { display: flex; flex-direction: column; gap: 6px; font-family: var(--font-sans, 'DM Sans', sans-serif); color: var(--slate, #3D3B4F); } .ds-field-label { font-size: 13px; } .ds-input { height: 40px; padding: 0 14px; border: 1px solid var(--silver, #D6D6D6); border-radius: 10px; background: var(--fog, #EEEEEE); color: var(--slate, #3D3B4F); font-family: var(--font-sans, 'DM Sans', sans-serif); font-size: 16px; font-variant-numeric: tabular-nums; caret-color: var(--accent, #1c9a69); transition: border-color 180ms cubic-bezier(.2,.8,.2,1), box-shadow 180ms cubic-bezier(.2,.8,.2,1); } .ds-input::placeholder { color: rgba(61,59,79,0.55); } .ds-input:hover { border-color: var(--slate, #3D3B4F); } .ds-input:focus-visible { outline: 0; border-color: var(--accent, #1c9a69); box-shadow: 0 0 0 4px rgba(40,233,159,0.18); }"
+    },
+    {
+      "name": "Tick Ruler",
+      "kind": "custom",
+      "refersTo": "card",
+      "description": "The blueprint divider: a 16px band of millimetre ticks that takes the section's text colour.",
+      "html": "<div class=\"ds-ruler\"></div>",
+      "css": ".ds-ruler { height: 16px; width: 100%; color: rgba(85,83,104,0.3); background-color: currentColor; -webkit-mask-image: url(\"data:image/svg+xml,%3Csvg width='40' height='16' xmlns='http://www.w3.org/2000/svg'%3E%3Cline x1='0' y1='15' x2='40' y2='15' stroke='white' stroke-width='1'/%3E%3Cline x1='0' y1='1' x2='0' y2='15' stroke='white' stroke-width='1'/%3E%3Cline x1='20' y1='7' x2='20' y2='15' stroke='white' stroke-width='1'/%3E%3Cline x1='10' y1='10' x2='10' y2='15' stroke='white' stroke-width='1'/%3E%3Cline x1='30' y1='10' x2='30' y2='15' stroke='white' stroke-width='1'/%3E%3C/svg%3E\"); mask-image: url(\"data:image/svg+xml,%3Csvg width='40' height='16' xmlns='http://www.w3.org/2000/svg'%3E%3Cline x1='0' y1='15' x2='40' y2='15' stroke='white' stroke-width='1'/%3E%3Cline x1='0' y1='1' x2='0' y2='15' stroke='white' stroke-width='1'/%3E%3Cline x1='20' y1='7' x2='20' y2='15' stroke='white' stroke-width='1'/%3E%3Cline x1='10' y1='10' x2='10' y2='15' stroke='white' stroke-width='1'/%3E%3Cline x1='30' y1='10' x2='30' y2='15' stroke='white' stroke-width='1'/%3E%3C/svg%3E\"); -webkit-mask-size: 40px 16px; mask-size: 40px 16px; -webkit-mask-repeat: repeat-x; mask-repeat: repeat-x; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Workshop Blueprint",
+    "overview": "Vertex looks like a precision instrument drawn on a workshop blueprint, then handed to a person. The page is a sheet of pale grey paper with a faint dotted grid; sections are separated by rulers with millimetre ticks, diagonal hatching bands and dashed rails with small corner marks, the way a technical drawing frames its views. On that sheet, everything the visitor touches is rounded and warm: pill buttons, soft-cornered cards, a humanist grotesk for headings and ordinary text figures in tables. The tension between the exact, ruled background and the friendly, tactile foreground is the identity. Precision earns trust; roundness makes it approachable.\n\nDensity is moderate. Marketing surfaces breathe with big display type and one animated wire orb; operating surfaces (vault tables, deposit tickets, lending workspaces) tighten to scannable rows and 40px controls. Dark slate blocks with lavender text carry the dramatic passages (the \"how vaults earn\" chapter, the closing call to action, page mastheads), and lime is the headline colour on dark. One green does the work of \"act here\"; the pastel accents (lavender, magenta, seafoam, neon, ice) are annotation colours, used the way a draughtsman uses coloured pencils on a plan.\n\nThe owner has rejected, explicitly, anything that reads as a template or machine output: wall-to-wall monospace, hard square corners, shouting uppercase headlines, overloaded explainer diagrams and em dashes. Those are anti-references, not options.",
+    "keyCharacteristics": [
+      "Blueprint chrome (dotted grid, tick rulers, hatching, dashed rails) around rounded, tactile parts.",
+      "One action colour, Spring Green, on ≤10% of any screen; pastels annotate, never call to action.",
+      "Slate-on-grey by default; slate blocks with lavender and lime for emphasis chapters.",
+      "Instrument Sans headings, DM Sans everything else, IBM Plex Mono only for addresses and code.",
+      "Lightly lifted surfaces: cards rest on a soft offset shadow and rise 2px on hover; buttons lift 1px and press to 98%.",
+      "Real numbers, tabular, refreshed from the chain, with the freshness stated beside them."
+    ],
+    "rules": [
+      { "name": "The One Green Rule", "body": "Spring Green marks the action a visitor is meant to take. If two green solids are visible in one viewport, one of them is wrong.", "section": "colors" },
+      { "name": "The Pencil Rule", "body": "Pastels annotate: labels, chips, strokes, tiles inside drawings. They never fill a button, never carry a warning and never appear as large surfaces on light ground.", "section": "colors" },
+      { "name": "The Slate Chapter Rule", "body": "Dark passages use slate with lavender body text and lime headings, never white text on black. The dotted grid continues through them at 5% lavender.", "section": "colors" },
+      { "name": "The No-Shouting Rule", "body": "Uppercase lives in labels 14px and under. Headlines, buttons and body are sentence case.", "section": "typography" },
+      { "name": "The Figures-Are-Text Rule", "body": "Numbers use the body face with font-variant-numeric: tabular-nums. Monospace is for identifiers, not for looking technical.", "section": "typography" },
+      { "name": "The Bracket Rule", "body": "A section tag reads [ VAULTS ], in label style, above its headline; it is the blueprint's view title, not a marketing eyebrow, and it appears only at chapter starts.", "section": "typography" },
+      { "name": "The Slate Shadow Rule", "body": "Every shadow is tinted from Slate and has an offset and blur. A colourless grey shadow or a zero-blur block is a costume.", "section": "elevation" },
+      { "name": "The Press Rule", "body": "Pressing scales a control to 98% and drops its shadow, in 80ms; releasing returns it in 180ms on the standard ease-out.", "section": "elevation" }
+    ],
+    "dos": [
+      "Do keep Spring Green to one solid per view and let Pool Green carry green text and figures.",
+      "Do set every number in DM Sans with tabular numerals, and state its freshness (\"Updated 9:50 PM\", \"rolling 24h\") next to it.",
+      "Do separate chapters with rulers, hatching or a pill row before reaching for empty space.",
+      "Do round everything interactive: 10px controls, 16px cards, pill buttons and chips.",
+      "Do give hover a lift (1px on buttons, 2px on cards) and press a 98% scale, both on the 180ms ease-out, and honour reduced-motion.",
+      "Do write sentence-case headlines that end in a full stop and keep uppercase inside bracketed labels.",
+      "Do use the four-petal mark as the author avatar wherever the protocol \"speaks\" (comments, quotes, footer)."
+    ],
+    "donts": [
+      "Don't set tables, stats or labels in monospace; IBM Plex Mono is for addresses, hashes and code only.",
+      "Don't use square corners, clipped hexagons or chamfered buttons anywhere; the only straight edges are drawing furniture.",
+      "Don't shout: no uppercase headlines, no display type above 116px, no em dashes in copy.",
+      "Don't fill a button or a large surface with a pastel, and never use pastels as warning colours.",
+      "Don't ship grey or hard-edged shadows, gradient text, glass blur or a coloured left border on cards.",
+      "Don't add more ambient motion than the orb; entrances are a single 700ms fade from a visible state.",
+      "Don't invent numbers, testimonials or partner logos; every figure comes from a contract read."
+    ]
+  }
+}

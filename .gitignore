@@ -1,0 +1,15 @@
+node_modules
+.next
+out
+.env
+.env.local
+.env.*.local
+.data
+*.log
+.DS_Store
+tsconfig.tsbuildinfo
+next-env.d.ts
+
+# Impeccable engine binary (re-downloaded on first run)
+.claude/skills/impeccable/scripts/bin/
+.claude/settings.local.json

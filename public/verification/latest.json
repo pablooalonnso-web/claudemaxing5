@@ -1,0 +1,853 @@
+{
+  "version": 1,
+  "generatedAt": "2026-09-18T05:52:50.672Z",
+  "commit": "94a3380dc342da9116fab88d7dc1e0f33058db5c",
+  "site": "https://usevertex.xyz",
+  "chain": {
+    "id": 4663,
+    "head": "65989353",
+    "headTime": "2026-09-18T05:52:49.000Z",
+    "rpcHost": "rpc.mainnet.chain.robinhood.com"
+  },
+  "summary": {
+    "pass": 126,
+    "fail": 0,
+    "warn": 1,
+    "skip": 0,
+    "total": 127
+  },
+  "groups": [
+    {
+      "id": "network",
+      "title": "Network",
+      "description": "The RPC endpoint the app reads from, and the chain behind it.",
+      "checks": [
+        {
+          "name": "Chain id",
+          "status": "pass",
+          "detail": "eth_chainId returned 4663 (expected 4663, Robinhood Chain)",
+          "ms": 0
+        },
+        {
+          "name": "Chain head",
+          "status": "pass",
+          "detail": "Block 65989353 sealed 2s ago",
+          "ms": 0
+        },
+        {
+          "name": "Multicall3",
+          "status": "pass",
+          "detail": "Contract present at 0xcA11…CA11, batched reads work",
+          "ms": 96
+        }
+      ]
+    },
+    {
+      "id": "contracts",
+      "title": "Contracts",
+      "description": "Token contracts and the wiring between each vault, its router, oracle and position.",
+      "checks": [
+        {
+          "name": "USDG",
+          "status": "pass",
+          "detail": "USDG, 6 decimals at 0x5fc5…d168",
+          "ms": 90
+        },
+        {
+          "name": "Vertex token",
+          "status": "pass",
+          "detail": "Vertex (VERTEX), 18 decimals, supply 1,000,000,000, 10000000.000000000760178571 at the burn address",
+          "ms": 99
+        },
+        {
+          "name": "Registry",
+          "status": "pass",
+          "detail": "18 of 18 pinned vaults resolve to a version 7 registry entry (37 entries in total)",
+          "ms": 0
+        },
+        {
+          "name": "AMZN wiring",
+          "status": "pass",
+          "detail": "Vault 0xF8DE…73D5 v7: router, position, oracle, treasury and buyback addresses match the registry; router settles in USDG",
+          "ms": 110
+        },
+        {
+          "name": "AAPL wiring",
+          "status": "pass",
+          "detail": "Vault 0x5eaD…641e v7: router, position, oracle, treasury and buyback addresses match the registry; router settles in USDG",
+          "ms": 98
+        },
+        {
+          "name": "AMD wiring",
+          "status": "pass",
+          "detail": "Vault 0x6bAb…532d v7: router, position, oracle, treasury and buyback addresses match the registry; router settles in USDG",
+          "ms": 98
+        },
+        {
+          "name": "CRCL wiring",
+          "status": "pass",
+          "detail": "Vault 0xB20b…221d v7: router, position, oracle, treasury and buyback addresses match the registry; router settles in USDG",
+          "ms": 95
+        },
+        {
+          "name": "GME wiring",
+          "status": "pass",
+          "detail": "Vault 0x9A8D…087b v7: router, position, oracle, treasury and buyback addresses match the registry; router settles in USDG",
+          "ms": 88
+        },
+        {
+          "name": "GOOGL wiring",
+          "status": "pass",
+          "detail": "Vault 0x6058…3A02 v7: router, position, oracle, treasury and buyback addresses match the registry; router settles in USDG",
+          "ms": 86
+        },
+        {
+          "name": "INTC wiring",
+          "status": "pass",
+          "detail": "Vault 0x7075…26Bd v7: router, position, oracle, treasury and buyback addresses match the registry; router settles in USDG",
+          "ms": 96
+        },
+        {
+          "name": "META wiring",
+          "status": "pass",
+          "detail": "Vault 0xE0d7…6456 v7: router, position, oracle, treasury and buyback addresses match the registry; router settles in USDG",
+          "ms": 900
+        },
+        {
+          "name": "MSFT wiring",
+          "status": "pass",
+          "detail": "Vault 0x387f…b057 v7: router, position, oracle, treasury and buyback addresses match the registry; router settles in USDG",
+          "ms": 113
+        },
+        {
+          "name": "MSTR wiring",
+          "status": "pass",
+          "detail": "Vault 0x2f93…559D v7: router, position, oracle, treasury and buyback addresses match the registry; router settles in USDG",
+          "ms": 93
+        },
+        {
+          "name": "MU wiring",
+          "status": "pass",
+          "detail": "Vault 0x3BB0…1026 v7: router, position, oracle, treasury and buyback addresses match the registry; router settles in USDG",
+          "ms": 95
+        },
+        {
+          "name": "NVDA wiring",
+          "status": "pass",
+          "detail": "Vault 0xc5aF…A876 v7: router, position, oracle, treasury and buyback addresses match the registry; router settles in USDG",
+          "ms": 96
+        },
+        {
+          "name": "PLTR wiring",
+          "status": "pass",
+          "detail": "Vault 0xD72F…400c v7: router, position, oracle, treasury and buyback addresses match the registry; router settles in USDG",
+          "ms": 167
+        },
+        {
+          "name": "QQQ wiring",
+          "status": "pass",
+          "detail": "Vault 0x3f70…3dDf v7: router, position, oracle, treasury and buyback addresses match the registry; router settles in USDG",
+          "ms": 213
+        },
+        {
+          "name": "SNDK wiring",
+          "status": "pass",
+          "detail": "Vault 0x8197…54b9 v7: router, position, oracle, treasury and buyback addresses match the registry; router settles in USDG",
+          "ms": 88
+        },
+        {
+          "name": "SPCX wiring",
+          "status": "pass",
+          "detail": "Vault 0x0350…79a2 v7: router, position, oracle, treasury and buyback addresses match the registry; router settles in USDG",
+          "ms": 100
+        },
+        {
+          "name": "SPY wiring",
+          "status": "pass",
+          "detail": "Vault 0x21ff…3787 v7: router, position, oracle, treasury and buyback addresses match the registry; router settles in USDG",
+          "ms": 136
+        },
+        {
+          "name": "TSLA wiring",
+          "status": "pass",
+          "detail": "Vault 0x7881…8eF6 v7: router, position, oracle, treasury and buyback addresses match the registry; router settles in USDG",
+          "ms": 696
+        }
+      ]
+    },
+    {
+      "id": "vaults",
+      "title": "Vault state",
+      "description": "Live state of each of the 18 vaults, read at one block the way the vault page does.",
+      "checks": [
+        {
+          "name": "AMZN",
+          "status": "pass",
+          "detail": "Block 65989395: open, tick -221051 in [-222180, -219960], oracle quote 78 min old, value $385, 0.000224652 shares",
+          "ms": 548
+        },
+        {
+          "name": "AAPL",
+          "status": "pass",
+          "detail": "Block 65989407: open, tick 218141 in [217320, 219780], oracle quote 648 min old, value $391, 0.000178589 shares",
+          "ms": 362
+        },
+        {
+          "name": "AMD",
+          "status": "pass",
+          "detail": "Block 65989408: open, tick 213281 in [212800, 215400], oracle quote 121 min old, value $1,629, 0.000554376 shares",
+          "ms": 331
+        },
+        {
+          "name": "CRCL",
+          "status": "pass",
+          "detail": "Block 65989408: open, tick 231725 in [229260, 233880], oracle quote 34 min old, value $2,695, 0.00130624 shares",
+          "ms": 320
+        },
+        {
+          "name": "GME",
+          "status": "pass",
+          "detail": "Block 65989408: open, tick -245087 in [-247600, -244200], oracle quote 343 min old, value $401, 0.000516283 shares",
+          "ms": 356
+        },
+        {
+          "name": "GOOGL",
+          "status": "pass",
+          "detail": "Block 65989411: open, tick -217629 in [-219540, -217080], oracle quote 13 min old, value $393, 0.000176388 shares",
+          "ms": 599
+        },
+        {
+          "name": "INTC",
+          "status": "pass",
+          "detail": "Block 65989414: open, tick 229316 in [229200, 231800], oracle quote 125 min old, value $1,413, 0.00107991 shares",
+          "ms": 368
+        },
+        {
+          "name": "META",
+          "status": "pass",
+          "detail": "Block 65989415: open, tick 211049 in [210480, 213000], oracle quote 598 min old, value $2,155, 0.000674272 shares",
+          "ms": 334
+        },
+        {
+          "name": "MSFT",
+          "status": "pass",
+          "detail": "Block 65989432: open, tick 214237 in [213180, 215640], oracle quote 459 min old, value $403, 0.00015118 shares",
+          "ms": 330
+        },
+        {
+          "name": "MSTR",
+          "status": "pass",
+          "detail": "Block 65989432: open, tick 227291 in [225800, 230200], oracle quote 44 min old, value $2,159, 0.000887717 shares",
+          "ms": 1678
+        },
+        {
+          "name": "MU",
+          "status": "pass",
+          "detail": "Block 65989441: open, tick 207363 in [205800, 210120], oracle quote 57 min old, value $391, 0.000104916 shares",
+          "ms": 608
+        },
+        {
+          "name": "NVDA",
+          "status": "pass",
+          "detail": "Block 65989451: open, tick 222343 in [221300, 223700], oracle quote 149 min old, value $400, 0.000231143 shares",
+          "ms": 350
+        },
+        {
+          "name": "PLTR",
+          "status": "pass",
+          "detail": "Block 65989451: open, tick 224679 in [224000, 226600], oracle quote 27 min old, value $3,594, 0.00213629 shares",
+          "ms": 349
+        },
+        {
+          "name": "QQQ",
+          "status": "pass",
+          "detail": "Block 65989462: open, tick 210539 in [209850, 211400], oracle quote 1040 min old, value $392, 0.000192432 shares",
+          "ms": 345
+        },
+        {
+          "name": "SNDK",
+          "status": "pass",
+          "detail": "Block 65989472: open, tick 202416 in [200800, 205600], oracle quote 101 min old, value $397, 0.0000787578 shares",
+          "ms": 322
+        },
+        {
+          "name": "SPCX",
+          "status": "pass",
+          "detail": "Block 65989472: open, tick -225868 in [-227500, -225080], oracle quote 100 min old, value $1,380, 0.00094362 shares",
+          "ms": 334
+        },
+        {
+          "name": "SPY",
+          "status": "pass",
+          "detail": "Block 65989476: open, tick -209965 in [-210540, -209340], oracle quote 1051 min old, value $390, 0.000238681 shares",
+          "ms": 364
+        },
+        {
+          "name": "TSLA",
+          "status": "pass",
+          "detail": "Block 65989476: open, tick -217259 in [-219300, -216120], oracle quote 689 min old, value $1,370, 0.0117928 shares",
+          "ms": 341
+        }
+      ]
+    },
+    {
+      "id": "fees",
+      "title": "Fee accounting",
+      "description": "What each vault's own counters say about the fee split. The site says 70% of claimed fees compounds, 20% is reserved for the buyback and 10% goes to the protocol treasury.",
+      "checks": [
+        {
+          "name": "AMZN",
+          "status": "pass",
+          "detail": "Matches what the site describes. Counters show 70% compounds, 20% buyback, 10% protocol treasury (AMZN gross 0.000964633, USDG gross 0.204158)",
+          "ms": 87
+        },
+        {
+          "name": "AAPL",
+          "status": "pass",
+          "detail": "Matches what the site describes. Counters show 70% compounds, 20% buyback, 10% protocol treasury (USDG gross 0.206443, AAPL gross 0.000593521)",
+          "ms": 88
+        },
+        {
+          "name": "AMD",
+          "status": "pass",
+          "detail": "Matches what the site describes. Counters show 70% compounds, 20% buyback, 10% protocol treasury (USDG gross 6.61755, AMD gross 0.00587062)",
+          "ms": 93
+        },
+        {
+          "name": "CRCL",
+          "status": "pass",
+          "detail": "Matches what the site describes. Counters show 70% compounds, 20% buyback, 10% protocol treasury (USDG gross 13.7237, CRCL gross 0.171554)",
+          "ms": 85
+        },
+        {
+          "name": "GME",
+          "status": "pass",
+          "detail": "Matches what the site describes. Counters show 70% compounds, 20% buyback, 10% protocol treasury (GME gross 0.0193086, USDG gross 0.622202)",
+          "ms": 105
+        },
+        {
+          "name": "GOOGL",
+          "status": "pass",
+          "detail": "Matches what the site describes. Counters show 70% compounds, 20% buyback, 10% protocol treasury (GOOGL gross 0.000620239, USDG gross 0.309207)",
+          "ms": 86
+        },
+        {
+          "name": "INTC",
+          "status": "pass",
+          "detail": "Matches what the site describes. Counters show 70% compounds, 20% buyback, 10% protocol treasury (USDG gross 0.644021, INTC gross 0.0142784)",
+          "ms": 83
+        },
+        {
+          "name": "META",
+          "status": "pass",
+          "detail": "Matches what the site describes. Counters show 70% compounds, 20% buyback, 10% protocol treasury (USDG gross 5.19409, META gross 0.00717594)",
+          "ms": 93
+        },
+        {
+          "name": "MSFT",
+          "status": "pass",
+          "detail": "Matches what the site describes. Counters show 70% compounds, 20% buyback, 10% protocol treasury (USDG gross 0.390879, MSFT gross 0.000651629)",
+          "ms": 88
+        },
+        {
+          "name": "MSTR",
+          "status": "pass",
+          "detail": "Matches what the site describes. Counters show 70% compounds, 20% buyback, 10% protocol treasury (USDG gross 3.41667, MSTR gross 0.0388507)",
+          "ms": 121
+        },
+        {
+          "name": "MU",
+          "status": "pass",
+          "detail": "Matches what the site describes. Counters show 70% compounds, 20% buyback, 10% protocol treasury (USDG gross 0.49299, MU gross 0.000666565)",
+          "ms": 91
+        },
+        {
+          "name": "NVDA",
+          "status": "pass",
+          "detail": "Matches what the site describes. Counters show 70% compounds, 20% buyback, 10% protocol treasury (USDG gross 0.345324, NVDA gross 0.00155875)",
+          "ms": 88
+        },
+        {
+          "name": "PLTR",
+          "status": "pass",
+          "detail": "Matches what the site describes. Counters show 70% compounds, 20% buyback, 10% protocol treasury (USDG gross 8.55955, PLTR gross 0.0418999)",
+          "ms": 88
+        },
+        {
+          "name": "QQQ",
+          "status": "pass",
+          "detail": "Matches what the site describes. Counters show 70% compounds, 20% buyback, 10% protocol treasury (USDG gross 0.273977, QQQ gross 0.000392824)",
+          "ms": 90
+        },
+        {
+          "name": "SNDK",
+          "status": "pass",
+          "detail": "Matches what the site describes. Counters show 70% compounds, 20% buyback, 10% protocol treasury (USDG gross 0.522224, SNDK gross 0.000696173)",
+          "ms": 83
+        },
+        {
+          "name": "SPCX",
+          "status": "pass",
+          "detail": "Matches what the site describes. Counters show 70% compounds, 20% buyback, 10% protocol treasury (SPCX gross 0.00482947, USDG gross 0.733566)",
+          "ms": 94
+        },
+        {
+          "name": "SPY",
+          "status": "pass",
+          "detail": "Matches what the site describes. Counters show 70% compounds, 20% buyback, 10% protocol treasury (SPY gross 0.0000786477, USDG gross 0.032871)",
+          "ms": 94
+        },
+        {
+          "name": "TSLA",
+          "status": "pass",
+          "detail": "Matches what the site describes. Counters show 70% compounds, 20% buyback, 10% protocol treasury (TSLA gross 0.0109198, USDG gross 3.20437)",
+          "ms": 86
+        }
+      ]
+    },
+    {
+      "id": "deposits",
+      "title": "Deposit simulation",
+      "description": "Builds a 100 USDG deposit for every vault exactly like the vault page and executes the router call inside eth_call. The test account is given a USDG balance and allowance through a state override; nothing is signed or sent.",
+      "checks": [
+        {
+          "name": "USDG storage layout",
+          "status": "pass",
+          "detail": "balances mapping at slot 1, allowances mapping at slot 3 (found by probing eth_call state overrides)",
+          "ms": 1
+        },
+        {
+          "name": "AMZN",
+          "status": "pass",
+          "detail": "100 USDG → 0.0000565307 shares, swap leg 48.557608 USDG, router.deposit executes with 1,518,884 gas",
+          "ms": 1884
+        },
+        {
+          "name": "AAPL",
+          "status": "pass",
+          "detail": "100 USDG → 0.0000443406 shares, swap leg 33.507252 USDG, router.deposit executes with 1,953,827 gas",
+          "ms": 990
+        },
+        {
+          "name": "AMD",
+          "status": "pass",
+          "detail": "100 USDG → 0.0000330114 shares, swap leg 19.285685 USDG, router.deposit executes with 1,855,516 gas",
+          "ms": 2280
+        },
+        {
+          "name": "CRCL",
+          "status": "pass",
+          "detail": "100 USDG → 0.0000470114 shares, swap leg 52.44471 USDG, router.deposit executes with 1,501,777 gas",
+          "ms": 1019
+        },
+        {
+          "name": "GME",
+          "status": "pass",
+          "detail": "100 USDG → 0.000124933 shares, swap leg 26.900706 USDG, router.deposit executes with 1,539,882 gas",
+          "ms": 960
+        },
+        {
+          "name": "GOOGL",
+          "status": "pass",
+          "detail": "100 USDG → 0.0000434896 shares, swap leg 22.596332 USDG, router.deposit executes with 1,950,719 gas",
+          "ms": 881
+        },
+        {
+          "name": "INTC",
+          "status": "pass",
+          "detail": "100 USDG → 0.0000741373 shares, swap leg 5.430072 USDG, router.deposit executes with 1,949,300 gas",
+          "ms": 863
+        },
+        {
+          "name": "META",
+          "status": "pass",
+          "detail": "100 USDG → 0.0000303547 shares, swap leg 23.152348 USDG, router.deposit executes with 1,939,641 gas",
+          "ms": 846
+        },
+        {
+          "name": "MSFT",
+          "status": "pass",
+          "detail": "100 USDG → 0.000036427 shares, swap leg 42.627411 USDG, router.deposit executes with 1,509,711 gas",
+          "ms": 972
+        },
+        {
+          "name": "MSTR",
+          "status": "pass",
+          "detail": "100 USDG → 0.0000398898 shares, swap leg 34.778716 USDG, router.deposit executes with 1,494,729 gas",
+          "ms": 920
+        },
+        {
+          "name": "MU",
+          "status": "pass",
+          "detail": "100 USDG → 0.0000260006 shares, swap leg 36.655052 USDG, router.deposit executes with 1,500,035 gas",
+          "ms": 1899
+        },
+        {
+          "name": "NVDA",
+          "status": "pass",
+          "detail": "100 USDG → 0.0000559987 shares, swap leg 43.00969 USDG, router.deposit executes with 1,526,484 gas",
+          "ms": 1710
+        },
+        {
+          "name": "PLTR",
+          "status": "pass",
+          "detail": "100 USDG → 0.0000576638 shares, swap leg 27.046307 USDG, router.deposit executes with 1,953,565 gas",
+          "ms": 1788
+        },
+        {
+          "name": "QQQ",
+          "status": "pass",
+          "detail": "100 USDG → 0.000047581 shares, swap leg 43.854717 USDG, router.deposit executes with 1,517,506 gas",
+          "ms": 845
+        },
+        {
+          "name": "SNDK",
+          "status": "pass",
+          "detail": "100 USDG → 0.000019245 shares, swap leg 34.659804 USDG, router.deposit executes with 1,873,336 gas",
+          "ms": 2050
+        },
+        {
+          "name": "SPCX",
+          "status": "pass",
+          "detail": "100 USDG → 0.00006633 shares, swap leg 32.552534 USDG, router.deposit executes with 1,524,612 gas",
+          "ms": 1128
+        },
+        {
+          "name": "SPY",
+          "status": "pass",
+          "detail": "100 USDG → 0.0000593693 shares, swap leg 51.363859 USDG, router.deposit executes with 1,933,038 gas",
+          "ms": 898
+        },
+        {
+          "name": "TSLA",
+          "status": "pass",
+          "detail": "100 USDG → 0.000835187 shares, swap leg 36.013113 USDG, router.deposit executes with 1,494,683 gas",
+          "ms": 1920
+        }
+      ]
+    },
+    {
+      "id": "withdrawals",
+      "title": "Withdrawal simulation",
+      "description": "Redeems 0.1% of each vault's supply from the test account, both as pool tokens (vault.redeem) and as USDG through the router's protected swap (router.withdrawUSDG). Share balance and allowance are injected through a state override.",
+      "checks": [
+        {
+          "name": "Share storage layout",
+          "status": "pass",
+          "detail": "vault share balances at slot 0, allowances at slot 1",
+          "ms": 0
+        },
+        {
+          "name": "AMZN",
+          "status": "pass",
+          "detail": "0.000000224652 shares → tokens: 0.000754065 AMZN + 0.195931 USDG · USDG only: 0.384932 USDG (floor 0.380738); with a 1% floor the token route returns 0.000754065 AMZN and 0.195931 USDG",
+          "ms": 980
+        },
+        {
+          "name": "AAPL",
+          "status": "pass",
+          "detail": "0.000000178589 shares → tokens: 0.000393114 AAPL + 0.258181 USDG · USDG only: 0.389923 USDG (floor 0.388298); with a 1% floor the token route returns 0.258181 USDG and 0.000393114 AAPL",
+          "ms": 1853
+        },
+        {
+          "name": "AMD",
+          "status": "pass",
+          "detail": "0.000000554376 shares → tokens: 0.000577734 AMD + 1.31307 USDG · USDG only: 1.625471 USDG (floor 1.621069); with a 1% floor the token route returns 1.31307 USDG and 0.000577734 AMD",
+          "ms": 936
+        },
+        {
+          "name": "CRCL",
+          "status": "pass",
+          "detail": "0.00000130624 shares → tokens: 0.0165625 CRCL + 1.263957 USDG · USDG only: 2.691588 USDG (floor 2.659428); with a 1% floor the token route returns 1.26396 USDG and 0.0165625 CRCL",
+          "ms": 1477
+        },
+        {
+          "name": "GME",
+          "status": "pass",
+          "detail": "0.000000516283 shares → tokens: 0.00475044 GME + 0.292422 USDG · USDG only: 0.39931 USDG (floor 0.39814); with a 1% floor the token route returns 0.00475044 GME and 0.292422 USDG",
+          "ms": 874
+        },
+        {
+          "name": "GOOGL",
+          "status": "pass",
+          "detail": "0.000000176388 shares → tokens: 0.000253803 GOOGL + 0.303395 USDG · USDG only: 0.392942 USDG (floor 0.391797); with a 1% floor the token route returns 0.000253803 GOOGL and 0.303395 USDG",
+          "ms": 870
+        },
+        {
+          "name": "INTC",
+          "status": "pass",
+          "detail": "0.00000107991 shares → tokens: 0.000698393 INTC + 1.335784 USDG · USDG only: 1.411766 USDG (floor 1.411003); with a 1% floor the token route returns 1.33578 USDG and 0.000698393 INTC",
+          "ms": 966
+        },
+        {
+          "name": "META",
+          "status": "pass",
+          "detail": "0.000000674272 shares → tokens: 0.000740232 META + 1.649516 USDG · USDG only: 2.153641 USDG (floor 2.145579); with a 1% floor the token route returns 1.64952 USDG and 0.000740232 META",
+          "ms": 919
+        },
+        {
+          "name": "MSFT",
+          "status": "pass",
+          "detail": "0.00000015118 shares → tokens: 0.000350332 MSFT + 0.228794 USDG · USDG only: 0.402346 USDG (floor 0.398225); with a 1% floor the token route returns 0.228794 USDG and 0.000350332 MSFT",
+          "ms": 898
+        },
+        {
+          "name": "MSTR",
+          "status": "pass",
+          "detail": "0.000000887717 shares → tokens: 0.0055639 MSTR + 1.40375 USDG · USDG only: 2.145671 USDG (floor 2.139788); with a 1% floor the token route returns 1.40375 USDG and 0.0055639 MSTR",
+          "ms": 2470
+        },
+        {
+          "name": "MU",
+          "status": "pass",
+          "detail": "0.000000104916 shares → tokens: 0.000147137 MU + 0.246121 USDG · USDG only: 0.391062 USDG (floor 0.387773); with a 1% floor the token route returns 0.246121 USDG and 0.000147137 MU",
+          "ms": 3224
+        },
+        {
+          "name": "NVDA",
+          "status": "pass",
+          "detail": "0.000000231143 shares → tokens: 0.000791797 NVDA + 0.225562 USDG · USDG only: 0.400395 USDG (floor 0.396009); with a 1% floor the token route returns 0.225562 USDG and 0.000791797 NVDA",
+          "ms": 920
+        },
+        {
+          "name": "PLTR",
+          "status": "pass",
+          "detail": "0.00000213629 shares → tokens: 0.00554944 PLTR + 2.616269 USDG · USDG only: 3.576155 USDG (floor 3.569148); with a 1% floor the token route returns 2.61627 USDG and 0.00554944 PLTR",
+          "ms": 888
+        },
+        {
+          "name": "QQQ",
+          "status": "pass",
+          "detail": "0.000000192432 shares → tokens: 0.000243719 QQQ + 0.217643 USDG · USDG only: 0.392832 USDG (floor 0.38793); with a 1% floor the token route returns 0.217643 USDG and 0.000243719 QQQ",
+          "ms": 1652
+        },
+        {
+          "name": "SNDK",
+          "status": "pass",
+          "detail": "0.0000000787578 shares → tokens: 0.0000848172 SNDK + 0.258612 USDG · USDG only: 0.394529 USDG (floor 0.393501); with a 1% floor the token route returns 0.258612 USDG and 0.0000848172 SNDK",
+          "ms": 862
+        },
+        {
+          "name": "SPCX",
+          "status": "pass",
+          "detail": "0.00000094362 shares → tokens: 0.00294017 SPCX + 0.923752 USDG · USDG only: 1.380131 USDG (floor 1.36853); with a 1% floor the token route returns 0.00294017 SPCX and 0.923752 USDG",
+          "ms": 1084
+        },
+        {
+          "name": "SPY",
+          "status": "pass",
+          "detail": "0.000000238681 shares → tokens: 0.000265887 SPY + 0.187131 USDG · USDG only: 0.38897 USDG (floor 0.384895); with a 1% floor the token route returns 0.000265887 SPY and 0.187131 USDG",
+          "ms": 1103
+        },
+        {
+          "name": "TSLA",
+          "status": "pass",
+          "detail": "0.0000117928 shares → tokens: 0.00136159 TSLA + 0.870151 USDG · USDG only: 1.368785 USDG (floor 1.360648); with a 1% floor the token route returns 0.00136159 TSLA and 0.870151 USDG",
+          "ms": 1003
+        }
+      ]
+    },
+    {
+      "id": "lending",
+      "title": "Lending",
+      "description": "The META lending market and the oracle guard behind it.",
+      "checks": [
+        {
+          "name": "Market state",
+          "status": "pass",
+          "detail": "META V7 Lending active at block 65989966: $600 supplied, $228 borrowed, utilisation 38.0%, oracle available, bad debt 0",
+          "ms": 516
+        },
+        {
+          "name": "Position read",
+          "status": "pass",
+          "detail": "Position endpoint answers for an arbitrary owner at block 65989966 (supply 0, collateral 0, debt 0)",
+          "ms": 100
+        },
+        {
+          "name": "Oracle guard",
+          "status": "pass",
+          "detail": "healthy: Reference feed updated 599 minutes ago. Price-dependent actions are allowed.",
+          "ms": 1902
+        }
+      ]
+    },
+    {
+      "id": "swap",
+      "title": "Swap routing",
+      "description": "The aggregator route the trade page shows, and the calldata it would hand to the wallet.",
+      "checks": [
+        {
+          "name": "Quote 100 USDG → AAPL",
+          "status": "pass",
+          "detail": "KyberSwap route: 0.297248 AAPL out (≈$99.6394598982186), gas 330498",
+          "ms": 1118
+        },
+        {
+          "name": "Build calldata",
+          "status": "pass",
+          "detail": "2820 bytes of calldata for router 0x6131…37b5 (contract present on chain)",
+          "ms": 435
+        }
+      ]
+    },
+    {
+      "id": "site",
+      "title": "Production site",
+      "description": "Pages and APIs served from https://usevertex.xyz.",
+      "checks": [
+        {
+          "name": "GET /",
+          "status": "pass",
+          "detail": "200 text/html; charset=utf-8, 470 KB",
+          "ms": 820
+        },
+        {
+          "name": "GET /vaults",
+          "status": "pass",
+          "detail": "200 text/html; charset=utf-8, 338 KB",
+          "ms": 134
+        },
+        {
+          "name": "GET /vaults/055c02d0-7d61-4909-9331-47a1785c4f15",
+          "status": "pass",
+          "detail": "200 text/html; charset=utf-8, 309 KB",
+          "ms": 148
+        },
+        {
+          "name": "GET /lending",
+          "status": "pass",
+          "detail": "200 text/html; charset=utf-8, 298 KB",
+          "ms": 168
+        },
+        {
+          "name": "GET /lending/meta",
+          "status": "pass",
+          "detail": "200 text/html; charset=utf-8, 311 KB",
+          "ms": 151
+        },
+        {
+          "name": "GET /trade/swap",
+          "status": "pass",
+          "detail": "200 text/html; charset=utf-8, 303 KB",
+          "ms": 142
+        },
+        {
+          "name": "GET /portfolio",
+          "status": "pass",
+          "detail": "200 text/html; charset=utf-8, 296 KB",
+          "ms": 143
+        },
+        {
+          "name": "GET /strategies",
+          "status": "pass",
+          "detail": "200 text/html; charset=utf-8, 328 KB",
+          "ms": 143
+        },
+        {
+          "name": "GET /intelligence",
+          "status": "pass",
+          "detail": "200 text/html; charset=utf-8, 418 KB",
+          "ms": 153
+        },
+        {
+          "name": "GET /docs",
+          "status": "pass",
+          "detail": "200 text/html; charset=utf-8, 393 KB",
+          "ms": 145
+        },
+        {
+          "name": "GET /help",
+          "status": "pass",
+          "detail": "200 text/html; charset=utf-8, 314 KB",
+          "ms": 142
+        },
+        {
+          "name": "GET /help/contact",
+          "status": "pass",
+          "detail": "200 text/html; charset=utf-8, 302 KB",
+          "ms": 152
+        },
+        {
+          "name": "GET /status",
+          "status": "pass",
+          "detail": "200 text/html; charset=utf-8, 324 KB",
+          "ms": 922
+        },
+        {
+          "name": "API /api/public/vaults",
+          "status": "pass",
+          "detail": "200: 18 vaults, 18 with a live snapshot, 18 with a fee APR, source onchain",
+          "ms": 148
+        },
+        {
+          "name": "API /api/status",
+          "status": "pass",
+          "detail": "200: All monitored systems operational; api Operational, oracle healthy, vault deployed, keeper execute",
+          "ms": 569
+        },
+        {
+          "name": "API /api/lending/v2/markets",
+          "status": "pass",
+          "detail": "200: 1 market(s), Active",
+          "ms": 134
+        },
+        {
+          "name": "API /api/trade/quotes",
+          "status": "pass",
+          "detail": "200: 1 quote(s) kyber 0.297248 AAPL",
+          "ms": 523
+        },
+        {
+          "name": "API /api/trade/build",
+          "status": "pass",
+          "detail": "200: calldata for 0x6131…37b5 returned",
+          "ms": 478
+        },
+        {
+          "name": "RPC relay allows reads",
+          "status": "pass",
+          "detail": "200: eth_chainId → 0x1237",
+          "ms": 252
+        },
+        {
+          "name": "RPC relay refuses writes",
+          "status": "pass",
+          "detail": "403: Method not allowed through the relay",
+          "ms": 143
+        },
+        {
+          "name": "Security headers",
+          "status": "pass",
+          "detail": "HSTS and nosniff present",
+          "ms": 147
+        },
+        {
+          "name": "www alias",
+          "status": "warn",
+          "detail": "www alias does not resolve yet (fetch failed)",
+          "ms": 387
+        }
+      ]
+    },
+    {
+      "id": "build",
+      "title": "Build checks",
+      "description": "Static checks on the site's source at this commit.",
+      "checks": [
+        {
+          "name": "Typecheck",
+          "status": "pass",
+          "detail": "npm run -s typecheck exited 0",
+          "ms": 1762
+        },
+        {
+          "name": "Lint",
+          "status": "pass",
+          "detail": "npm run -s lint exited 0",
+          "ms": 2043
+        }
+      ]
+    }
+  ]
+}
