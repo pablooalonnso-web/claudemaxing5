@@ -5,6 +5,7 @@ import { explorerAddress, TOKEN_ADDRESS, USDG_ADDRESS } from "@/lib/chain";
 import { BrandMark } from "./BrandMark";
 import { BrandWireframe } from "./BrandWireframe";
 import { FooterCubes } from "./FooterCubes";
+import { LanguageSwitcher } from "./LanguageSwitcher";
 
 const COLUMNS: { title: string; links: { href: string; label: string; external?: boolean }[] }[] = [
   {
@@ -144,6 +145,7 @@ export function SiteFooter() {
         <span className="gf-copy">
           © {year} {BRAND.name} · Built on {CHAIN_NAME}
         </span>
+        <LanguageSwitcher variant="list" />
       </div>
     </footer>
   );

@@ -15,6 +15,8 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
   return { title: pin ? `${pin.symbol} vault · ${BRAND.name}` : BRAND.name };
 }
 
+export const dynamic = "force-dynamic";
+
 export function generateStaticParams() {
   return VAULT_PINS.map((p) => ({ id: p.id }));
 }

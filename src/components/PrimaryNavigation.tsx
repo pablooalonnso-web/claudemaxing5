@@ -6,6 +6,7 @@ import { ArrowLeftRight, BarChart3, BookOpen, ChevronDown, Layers, LifeBuoy, Men
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { WalletConnectButton } from "./wallet/WalletConnectButton";
 import { ContractAddress } from "./ContractAddress";
+import { LanguageSwitcher } from "./LanguageSwitcher";
 
 type Item = { href: string; label: string; blurb: string; icon: ReactNode; badge?: string };
 
@@ -99,6 +100,7 @@ export function PrimaryNavigation() {
         <Dropdown label="Resources" items={RESOURCES} pathname={pathname} />
       </nav>
       <div className="gh-actions">
+        <LanguageSwitcher />
         <div className="hex-group">
           <ContractAddress compact />
           <WalletConnectButton />
@@ -133,6 +135,9 @@ export function PrimaryNavigation() {
           ))}
           <div className="gh-mobile-actions">
             <ContractAddress />
+          </div>
+          <div className="gh-mobile-actions">
+            <LanguageSwitcher variant="list" />
           </div>
         </nav>
       ) : null}

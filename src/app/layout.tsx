@@ -3,6 +3,10 @@ import type { ReactNode } from "react";
 import { BRAND } from "@/lib/brand";
 import { anybody, dmSans, nanumPen, spaceMono } from "@/lib/fonts";
 import { Providers } from "@/components/Providers";
+import { I18nProvider } from "@/i18n/client";
+import { LOCALE_TAGS } from "@/i18n/config";
+import { resolveAll } from "@/i18n";
+import { getLocale } from "@/i18n/server";
 import "./globals.css";
 import "@/styles/greptile.css";
 
@@ -30,11 +34,15 @@ export const metadata: Metadata = {
   },
 };
 
-export default function RootLayout({ children }: { children: ReactNode }) {
+export default async function RootLayout({ children }: { children: ReactNode }) {
+  const locale = await getLocale();
+  const messages = resolveAll(locale);
   return (
-    <html lang="en" className={`${dmSans.variable} ${anybody.variable} ${spaceMono.variable} ${nanumPen.variable}`}>
+    <html lang={LOCALE_TAGS[locale]} className={`${dmSans.variable} ${anybody.variable} ${spaceMono.variable} ${nanumPen.variable}`}>
       <body>
-        <Providers>{children}</Providers>
+        <I18nProvider locale={locale} messages={messages}>
+          <Providers>{children}</Providers>
+        </I18nProvider>
       </body>
     </html>
   );
