@@ -58,7 +58,8 @@ export type ManagedState = {
   pending: [string, string];
   inventory: [string, string];
   quote: { answer: string; decimals: number; updatedAt: string; roundId: string } | null;
-  value: string;
+  /** Null while the Chainlink reference is stale: the valuation reverts and the vault fails closed. */
+  value: string | null;
   escrows: [string | null, string | null];
 };
 

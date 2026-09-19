@@ -86,7 +86,7 @@ export type ReasonCode =
   | "capped"
   | "floor";
 
-export type ExclusionCode = "thin" | "closed" | "noApr" | "unreadable" | "lendingInactive" | "lendingOracle" | "router";
+export type ExclusionCode = "thin" | "closed" | "stale" | "noApr" | "unreadable" | "lendingInactive" | "lendingOracle" | "router";
 
 export type Candidate = {
   kind: "vault" | "lending";
@@ -140,11 +140,12 @@ function readVault(row: VaultSnapshotRow, pin: VaultPin, now: number): { raw: Ra
   const s = row.snapshot;
   const m = s?.extras?.managedState;
   if (!s || !m) return { code: "unreadable" };
+  if (!(m.open && !m.stopped && !m.recovery && !m.restart)) return { code: "closed" };
+  if (!m.quote) return { code: "stale" };
   const fee = s.extras?.feeApr;
   if (s.apr === null || !fee || fee.source !== "vault-fees-v1") return { code: "noApr" };
   if (s.assets === null) return { code: "unreadable" };
   const tvl = Number(s.assets) / 1e6;
-  if (!(m.open && !m.stopped && !m.recovery && !m.restart)) return { code: "closed" };
   if (tvl < ALLOCATOR_TVL_FLOOR) return { code: "thin" };
   const pos = s.holdings?.positions?.[0];
   const oracle = m.quote ? Number(m.quote.answer) / 10 ** m.quote.decimals : null;
@@ -440,6 +441,8 @@ export function describeExclusion(code: ExclusionCode): string {
       return `Less than $${ALLOCATOR_TVL_FLOOR.toLocaleString("en-US")} in the vault`;
     case "closed":
       return "Deposits paused or vault in recovery";
+    case "stale":
+      return "Waiting for a fresh Chainlink reference; the vault fails closed until the feed updates";
     case "noApr":
       return "No fee APR sample yet";
     case "unreadable":

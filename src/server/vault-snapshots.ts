@@ -55,11 +55,15 @@ async function readVault(pin: VaultPin, now: number): Promise<VaultSnapshotRow> 
       client.readContract({ address: position, abi: managedPositionAbi, functionName: "pendingFees" }),
       client.readContract({ address: position, abi: managedPositionAbi, functionName: "pool" }),
       client.readContract({ address: valuation, abi: managedValuationAbi, functionName: "quote" }).catch(() => null),
-      client.readContract({ address: valuation, abi: managedValuationAbi, functionName: "value", args: [inventory[0], inventory[1]] }).then(async (v) => {
-        // Pending (unclaimed) LP fees belong to the vault too.
-        const p = await client.readContract({ address: position, abi: managedPositionAbi, functionName: "pendingFees" });
-        return client.readContract({ address: valuation, abi: managedValuationAbi, functionName: "value", args: [inventory[0] + p[0], inventory[1] + p[1]] }).catch(() => v);
-      }),
+      client
+        .readContract({ address: valuation, abi: managedValuationAbi, functionName: "value", args: [inventory[0], inventory[1]] })
+        .then(async (v) => {
+          // Pending (unclaimed) LP fees belong to the vault too.
+          const p = await client.readContract({ address: position, abi: managedPositionAbi, functionName: "pendingFees" });
+          return client.readContract({ address: valuation, abi: managedValuationAbi, functionName: "value", args: [inventory[0] + p[0], inventory[1] + p[1]] }).catch(() => v);
+        })
+        // The valuation reverts while the Chainlink reference is stale (markets closed). The vault then fails closed; report it as paused, not missing.
+        .catch(() => null),
       client.readContract({ address: valuation, abi: managedValuationAbi, functionName: "value", args: [g0, g1] }).catch(() => null),
       client.readContract({ address: valuation, abi: managedValuationAbi, functionName: "value", args: [b0, b1] }).catch(() => null),
     ]);
@@ -81,9 +85,9 @@ async function readVault(pin: VaultPin, now: number): Promise<VaultSnapshotRow> 
     const hasLiquidity = poolLiquidity > 0n && (inventory[0] > 0n || inventory[1] > 0n);
     const status: "active" | "waiting" | "recovery" = recovery ? "recovery" : hasLiquidity ? "active" : "waiting";
     const observedAt = new Date(Number(block.timestamp) * 1000).toISOString();
-    const assetsUsdg = Number(formatUnits(value, 6));
+    const assetsUsdg = value === null ? null : Number(formatUnits(value, 6));
     const grossFeesUsdg = feesValue === null ? null : Number(formatUnits(feesValue, 6)) + (unclaimedValue === null ? 0 : Number(formatUnits(unclaimedValue, 6)));
-    const aprInfo = grossFeesUsdg === null ? null : await recordAndEstimate(vault, grossFeesUsdg, assetsUsdg, current, now);
+    const aprInfo = grossFeesUsdg === null || assetsUsdg === null ? null : await recordAndEstimate(vault, grossFeesUsdg, assetsUsdg, current, now);
     const idleAssets = stockIsToken1 ? idle[0] : idle[1];
 
     const managedState: ManagedState = {
@@ -110,7 +114,7 @@ async function readVault(pin: VaultPin, now: number): Promise<VaultSnapshotRow> 
       quote: quote
         ? { answer: quote.answer.toString(), decimals: quote.decimals, updatedAt: quote.updatedAt.toString(), roundId: quote.roundId.toString() }
         : null,
-      value: value.toString(),
+      value: value === null ? null : value.toString(),
       escrows: [e0 === "0x0000000000000000000000000000000000000000" ? null : e0, e1 === "0x0000000000000000000000000000000000000000" ? null : e1],
     };
 
@@ -119,7 +123,7 @@ async function readVault(pin: VaultPin, now: number): Promise<VaultSnapshotRow> 
       snapshot: {
         observedAt,
         block: block.number.toString(),
-        assets: value.toString(),
+        assets: value === null ? null : value.toString(),
         fees: feesValue === null ? null : feesValue.toString(),
         buyback: buybackValue === null ? null : buybackValue.toString(),
         holdings: {
@@ -127,7 +131,7 @@ async function readVault(pin: VaultPin, now: number): Promise<VaultSnapshotRow> 
           block: block.number.toString(),
           observedAt,
           idleAssets: idleAssets.toString(),
-          totalAssets: value.toString(),
+          totalAssets: value === null ? null : value.toString(),
           positions: [
             {
               id: pool.toLowerCase(),
@@ -136,7 +140,7 @@ async function readVault(pin: VaultPin, now: number): Promise<VaultSnapshotRow> 
               adapter: position,
               symbol: entry.name,
               status,
-              assets: (value - (idleAssets > value ? value : idleAssets)).toString(),
+              assets: value === null ? null : (value - (idleAssets > value ? value : idleAssets)).toString(),
               unclaimedFees: unclaimedValue === null ? null : unclaimedValue.toString(),
               targetWeightBps: 10_000,
               tokenId: null,

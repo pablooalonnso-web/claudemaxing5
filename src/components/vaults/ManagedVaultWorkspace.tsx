@@ -22,11 +22,12 @@ const signed = (v: number) => `${v > 0 ? "+" : ""}${v.toLocaleString("en-US", { 
 const short = (a: string) => `${a.slice(0, 6)}…${a.slice(-4)}`;
 
 /** Stable key for the label `depositStatusOf` (src/lib/managed-vault.ts) returns, mirroring its branch order. */
-export function managedStatusKey(state: Parameters<typeof depositStatusOf>[0]): "checking" | "recovery" | "stopped" | "restart" | "open" | "closed" {
+export function managedStatusKey(state: Parameters<typeof depositStatusOf>[0]): "checking" | "recovery" | "stopped" | "restart" | "stale" | "open" | "closed" {
   if (!state) return "checking";
   if (state.recovery) return "recovery";
   if (state.stopped) return "stopped";
   if (state.restart) return "restart";
+  if ("quote" in state && state.quote === null) return "stale";
   return state.open ? "open" : "closed";
 }
 

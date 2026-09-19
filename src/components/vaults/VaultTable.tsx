@@ -170,6 +170,7 @@ export function VaultTable() {
   const positions = singles.map((p) => live[p.id]?.position ?? null).filter((v): v is number => v !== null && v > 0);
   const positionsTotal = positions.reduce((a, b) => a + b, 0);
   // Live per-vault reads win over the snapshot; a vault that has reported neither is left out.
+  const valued = rows ? rows.filter((r) => r.assets !== null).length : 0;
   const tvlNumbers = singles.map((p) => live[p.id]?.tvl ?? usdgToNumber(rows?.find((r) => r.vault.toLowerCase() === p.vault.toLowerCase())?.assets ?? null)).filter((v): v is number => v !== null);
   const tvlTotal = tvlNumbers.length ? formatUsd(tvlNumbers.reduce((a, b) => a + b, 0)) : "–";
   const feesTotal = rows ? formatUsd(usdgToNumber(sumColumn(rows, "fees"))) : "–";
@@ -192,7 +193,7 @@ export function VaultTable() {
             <article>
               <span className="stat-label">{t("stats.tvl")}</span>
               <strong className="stat-value">{tvlTotal}</strong>
-              <span className="stat-note">{rows ? t(rows.length === 1 ? "stats.acrossOne" : "stats.acrossMany", { n: rows.length }) : error ? t("stats.totalsUnavailable") : t("stats.loading")}</span>
+              <span className="stat-note">{rows ? (valued < rows.length ? t("stats.acrossSome", { n: valued, total: rows.length }) : t(rows.length === 1 ? "stats.acrossOne" : "stats.acrossMany", { n: rows.length })) : error ? t("stats.totalsUnavailable") : t("stats.loading")}</span>
             </article>
             <article>
               <span className="stat-label">{t("stats.open")}</span>

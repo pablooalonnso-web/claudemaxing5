@@ -68,14 +68,15 @@ function vaultSignal(row: VaultSnapshotRow, pin: { id: string; symbol: string; h
   const rangeWidthPct = lower !== null && upper !== null && price ? ((upper - lower) / price) * 100 : null;
   const oraclePrice = m.quote ? Number(m.quote.answer) / 10 ** m.quote.decimals : null;
   const oracleAgeSeconds = m.quote ? Math.max(0, Math.floor(now / 1000) - Number(m.quote.updatedAt)) : null;
-  const deposits: VaultSignal["deposits"] = m.recovery ? "recovery" : m.open && !m.stopped && !m.restart ? "open" : "paused";
+  const deposits: VaultSignal["deposits"] = m.recovery ? "recovery" : m.open && !m.stopped && !m.restart && m.quote ? "open" : "paused";
   const inRange = pos?.inRange ?? null;
   let unclaimed: number | null = null;
   if (pos?.unclaimedFees) unclaimed = num(pos.unclaimedFees);
   const lifetimeFees = s.fees === null ? null : (num(s.fees) ?? 0) + (unclaimed ?? 0);
   if (inRange === false) flags.push("out of range");
   else if (rangePosition !== null && (rangePosition < EDGE_FRACTION || rangePosition > 1 - EDGE_FRACTION)) flags.push(rangePosition < EDGE_FRACTION ? "near lower bound" : "near upper bound");
-  if (oracleAgeSeconds !== null && oracleAgeSeconds > STOCK_FEED_FRESH_SECONDS) flags.push("oracle stale");
+  if (!m.quote) flags.push("no fresh reference");
+  else if (oracleAgeSeconds !== null && oracleAgeSeconds > STOCK_FEED_FRESH_SECONDS) flags.push("oracle stale");
   if (oraclePrice && price && Math.abs(price / oraclePrice - 1) > 0.01) flags.push(`pool ${((price / oraclePrice - 1) * 100).toFixed(1)}% vs oracle`);
   if (deposits !== "open") flags.push(`deposits ${deposits}`);
   if (m.cases[0] || m.cases[1]) flags.push("recovery case open");

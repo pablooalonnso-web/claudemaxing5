@@ -80,7 +80,7 @@ export function useVaultView(pin: VaultPin | null, owner?: Address) {
   const depositsEnabled = typeof managed?.open === "boolean" ? managed.open : null;
   const depositsPaused =
     managed && [managed.stopped, managed.recovery, managed.restart].every((v) => typeof v === "boolean")
-      ? !!(managed.stopped || managed.recovery || managed.restart)
+      ? !!(managed.stopped || managed.recovery || managed.restart || managed.quote === null)
       : null;
 
   return {

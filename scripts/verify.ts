@@ -198,15 +198,17 @@ async function main() {
       const inRange = s.tick > s.lower && s.tick < s.upper;
       const problems: string[] = [];
       if (!s.open || s.stopped || s.recovery || s.restart) problems.push(`deposits closed (open ${s.open}, stopped ${s.stopped}, recovery ${s.recovery}, restart ${s.restart})`);
-      if (!s.quote) problems.push("no oracle quote");
-      else if (quoteAge! > 26 * 3600) problems.push(`oracle quote ${Math.round(quoteAge! / 3600)}h old`);
+      if (s.quote && quoteAge! > 26 * 3600) problems.push(`oracle quote ${Math.round(quoteAge! / 3600)}h old`);
       if (!inRange) problems.push(`tick ${s.tick} outside range [${s.lower}, ${s.upper}]`);
       if (s.supply === 0n) problems.push("no shares issued");
-      if (s.value === null || s.value === 0n) problems.push("valuation unavailable");
+      if (s.quote && (s.value === null || s.value === 0n)) problems.push("valuation unavailable");
       if (s.cases[0] || s.cases[1]) problems.push("recovery case opened");
       const tvl = s.value ? `$${Number(formatUnits(s.value, 6)).toLocaleString("en-US", { maximumFractionDigits: 0 })}` : "n/a";
       const detail = `Block ${s.block}: open, tick ${s.tick} in [${s.lower}, ${s.upper}], oracle quote ${quoteAge === null ? "missing" : `${Math.round(quoteAge / 60)} min old`}, value ${tvl}, ${amount(s.supply, 18)} shares`;
-      return problems.length ? { status: "fail", detail: `${problems.join("; ")} (${detail})` } : { detail };
+      if (problems.length) return { status: "fail", detail: `${problems.join("; ")} (${detail})` };
+      // No quote means the Chainlink stock feed is older than the valuation accepts (markets closed). The vault fails closed by design.
+      if (!s.quote) return { status: "warn", detail: `Paused by design: the Chainlink reference is stale, so the valuation reverts, deposits are refused and USDG exits wait; token exits still work (${detail})` };
+      return { detail };
     });
   }
 
@@ -250,7 +252,13 @@ async function main() {
       const override = [{ address: USDG_ADDRESS, stateDiff: [{ slot: usdgBalance.slot, value: pad(toHex(parseUnits("1000", 6)), { size: 32 }) }, { slot: allowanceSlot(TEST_ACCOUNT, entry.router as Address, usdgAllowance.base), value: MAX }] }];
       // Reads of the test account's USDG balance see the override, everything else is untouched.
       const proxy = { ...client, readContract: (a: Parameters<PublicClient["readContract"]>[0]) => client.readContract(same(a.address ?? "", USDG_ADDRESS) ? ({ ...a, stateOverride: override } as never) : (a as never)) } as PublicClient;
-      const quote = await buildDepositQuote(entry, TEST_ACCOUNT, DEPOSIT_USDG, false, proxy);
+      let quote: Awaited<ReturnType<typeof buildDepositQuote>>;
+      try {
+        quote = await buildDepositQuote(entry, TEST_ACCOUNT, DEPOSIT_USDG, false, proxy);
+      } catch (e) {
+        if (/Waiting for valid prices/i.test(firstLine(e)) && !states.get(pin.id)?.quote) return { status: "warn", detail: "Refused by design: no fresh Chainlink reference, so the router will not build a deposit" };
+        throw e;
+      }
       const call = { address: entry.router as Address, abi: managedRouterAbi, functionName: "deposit", args: [quote.entry], account: TEST_ACCOUNT, stateOverride: override } as const;
       // Some nodes behind the public endpoint reject state overrides on eth_estimateGas; retry, then fall back to eth_call.
       let gas: bigint | null = null;
@@ -302,6 +310,11 @@ async function main() {
       const stockIsToken0 = !same(entry.asset, entry.token0);
       const stockOut = stockIsToken0 ? probe.result[0] : probe.result[1];
       const usdgOut = stockIsToken0 ? probe.result[1] : probe.result[0];
+      if (!s.quote || s.value === null) {
+        const stockSym0 = stockIsToken0 ? s.symbols[0] : s.symbols[1];
+        const stockDec0 = stockIsToken0 ? s.decimals[0] : s.decimals[1];
+        return { status: "warn", detail: `Token exit works: ${amount(shares, 18)} shares → ${amount(stockOut, stockDec0)} ${stockSym0} + ${formatUnits(usdgOut, 6)} USDG (1% floor honoured: ${amount(tokens.result[0], s.decimals[0])} ${s.symbols[0]} and ${amount(tokens.result[1], s.decimals[1])} ${s.symbols[1]}). USDG exit waits for a fresh Chainlink reference, by design` };
+      }
       const stockValue = await client.readContract({ address: entry.oracle as Address, abi: managedValuationAbi, functionName: "value", args: stockIsToken0 ? [stockOut, 0n] : [0n, stockOut], blockNumber: s.block });
       const swapLoss = s.lossLimits?.swapLossBps ?? entry.maxSwapLossBps;
       const minOut = (stockValue * BigInt(10_000 - swapLoss) + 9_999n) / 10_000n;

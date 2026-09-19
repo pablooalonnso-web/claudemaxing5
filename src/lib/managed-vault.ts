@@ -263,11 +263,13 @@ export const encodeWithdraw = (quote: WithdrawQuote) =>
 
 export type DepositStatusInfo = { label: string; tone: "open" | "paused" | "unknown"; blocked: boolean };
 
-export function depositStatusOf(state: { open: boolean; stopped: boolean; recovery: boolean; restart: boolean } | null | undefined): DepositStatusInfo {
+export function depositStatusOf(state: { open: boolean; stopped: boolean; recovery: boolean; restart: boolean; quote?: unknown } | null | undefined): DepositStatusInfo {
   if (!state) return { label: "Checking deposit status", tone: "unknown", blocked: false };
   if (state.recovery) return { label: "Recovery", tone: "paused", blocked: true };
   if (state.stopped) return { label: "Management paused", tone: "paused", blocked: true };
   if (state.restart) return { label: "Restart required", tone: "paused", blocked: true };
+  // The vault fails closed without a fresh Chainlink reference (stock feeds stop at the market close).
+  if ("quote" in state && state.quote === null) return { label: "Waiting for a fresh price reference", tone: "paused", blocked: true };
   return state.open ? { label: "Deposits open", tone: "open", blocked: false } : { label: "Deposits closed", tone: "paused", blocked: true };
 }
 
