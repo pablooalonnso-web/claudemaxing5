@@ -256,7 +256,12 @@ async function main() {
       try {
         quote = await buildDepositQuote(entry, TEST_ACCOUNT, DEPOSIT_USDG, false, proxy);
       } catch (e) {
-        if (/Waiting for valid prices/i.test(firstLine(e)) && !states.get(pin.id)?.quote) return { status: "warn", detail: "Refused by design: no fresh Chainlink reference, so the router will not build a deposit" };
+        if (/Waiting for valid prices/i.test(firstLine(e))) {
+          // The feed can cross its freshness limit between the state check and this one; read again before deciding.
+          const fresh = await readManagedState(entry, TEST_ACCOUNT, client);
+          if (!fresh.quote) return { status: "warn", detail: "Refused by design: no fresh Chainlink reference, so the router will not build a deposit" };
+          if (fresh.tick <= fresh.lower || fresh.tick >= fresh.upper) return { status: "fail", detail: `Refused: pool tick ${fresh.tick} is outside the range [${fresh.lower}, ${fresh.upper}]; the keeper needs to re-range` };
+        }
         throw e;
       }
       const call = { address: entry.router as Address, abi: managedRouterAbi, functionName: "deposit", args: [quote.entry], account: TEST_ACCOUNT, stateOverride: override } as const;
