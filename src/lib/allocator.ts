@@ -329,6 +329,9 @@ export function allocate(ranking: Candidate[], spec: ProfileSpec): { candidate: 
       const freeSum = free.reduce((a, c) => a + weights.get(c.id)!, 0);
       for (const c of free) weights.set(c.id, weights.get(c.id)! + (excess * weights.get(c.id)!) / freeSum);
     }
+    // With fewer positions than the cap allows, every one can hit the cap; the split must still add up to the whole amount.
+    const capped = list.reduce((a, c) => a + weights.get(c.id)!, 0);
+    if (capped > 0 && Math.abs(capped - 1) > 1e-9) for (const c of list) weights.set(c.id, weights.get(c.id)! / capped);
     const lending = list.find((c) => c.kind === "lending");
     if (lending && spec.lendingFloor > 0 && weights.get(lending.id)! < spec.lendingFloor) {
       const others = list.filter((c) => c.id !== lending.id);
