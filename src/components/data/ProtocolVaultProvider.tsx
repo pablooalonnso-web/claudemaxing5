@@ -14,6 +14,7 @@ export type SnapshotRowSummary = {
   fees: string | null;
   buyback: string | null;
   apr: number | null;
+  valuedBy: "oracle" | "pool" | null;
 };
 
 export type ProtocolSnapshot = {
@@ -56,10 +57,11 @@ function summarise(rows: VaultSnapshotRow[], pins: VaultPin[]): ProtocolSnapshot
     fees: lifetimeFees(r),
     buyback: r.snapshot?.buyback ?? null,
     apr: r.snapshot?.extras?.feeApr?.source === "vault-fees-v1" && Number.isFinite(r.snapshot?.apr) ? r.snapshot!.apr : null,
+    valuedBy: r.snapshot?.extras?.valuedBy ?? null,
   }));
   for (const pin of pins) {
     if (!list.some((r) => r.vault.toLowerCase() === pin.vault.toLowerCase())) {
-      list.push({ vault: pin.vault, id: pin.id, kind: "managed", assets: null, fees: null, buyback: null, apr: null });
+      list.push({ vault: pin.vault, id: pin.id, kind: "managed", assets: null, fees: null, buyback: null, apr: null, valuedBy: null });
     }
   }
   return { observedAt: times.length ? Math.min(...times) : Date.now(), block: relevant.find((r) => r.snapshot)?.snapshot?.block ?? "0", rows: list };

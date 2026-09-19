@@ -85,6 +85,18 @@ async function readVault(pin: VaultPin, now: number): Promise<VaultSnapshotRow> 
     const hasLiquidity = poolLiquidity > 0n && (inventory[0] > 0n || inventory[1] > 0n);
     const status: "active" | "waiting" | "recovery" = recovery ? "recovery" : hasLiquidity ? "active" : "waiting";
     const observedAt = new Date(Number(block.timestamp) * 1000).toISOString();
+    // While the Chainlink reference is stale the valuation contract refuses to price the vault. The tokens are still
+    // there, so value the inventory at the Uniswap pool price instead and label it: real onchain data, not the reference.
+    const poolValue = (a0: bigint, a1: bigint) => {
+      const stock = stockIsToken1 ? a1 : a0;
+      const usdg = stockIsToken1 ? a0 : a1;
+      return usdg + BigInt(Math.round(Number(formatUnits(stock, 18)) * current * 1e6));
+    };
+    const valuedBy: "oracle" | "pool" = value === null ? "pool" : "oracle";
+    const val = value ?? poolValue(inventory[0] + pending[0], inventory[1] + pending[1]);
+    const feesVal = feesValue ?? (valuedBy === "pool" ? poolValue(g0, g1) : null);
+    const buybackVal = buybackValue ?? (valuedBy === "pool" ? poolValue(b0, b1) : null);
+    const unclaimedVal = unclaimedValue ?? (valuedBy === "pool" ? poolValue(pending[0], pending[1]) : null);
     const assetsUsdg = value === null ? null : Number(formatUnits(value, 6));
     const grossFeesUsdg = feesValue === null ? null : Number(formatUnits(feesValue, 6)) + (unclaimedValue === null ? 0 : Number(formatUnits(unclaimedValue, 6)));
     const aprInfo = grossFeesUsdg === null || assetsUsdg === null ? null : await recordAndEstimate(vault, grossFeesUsdg, assetsUsdg, current, now);
@@ -123,15 +135,15 @@ async function readVault(pin: VaultPin, now: number): Promise<VaultSnapshotRow> 
       snapshot: {
         observedAt,
         block: block.number.toString(),
-        assets: value === null ? null : value.toString(),
-        fees: feesValue === null ? null : feesValue.toString(),
-        buyback: buybackValue === null ? null : buybackValue.toString(),
+        assets: val.toString(),
+        fees: feesVal === null ? null : feesVal.toString(),
+        buyback: buybackVal === null ? null : buybackVal.toString(),
         holdings: {
           vault: pin.vault,
           block: block.number.toString(),
           observedAt,
           idleAssets: idleAssets.toString(),
-          totalAssets: value === null ? null : value.toString(),
+          totalAssets: val.toString(),
           positions: [
             {
               id: pool.toLowerCase(),
@@ -140,8 +152,8 @@ async function readVault(pin: VaultPin, now: number): Promise<VaultSnapshotRow> 
               adapter: position,
               symbol: entry.name,
               status,
-              assets: value === null ? null : (value - (idleAssets > value ? value : idleAssets)).toString(),
-              unclaimedFees: unclaimedValue === null ? null : unclaimedValue.toString(),
+              assets: (val - (idleAssets > val ? val : idleAssets)).toString(),
+              unclaimedFees: unclaimedVal === null ? null : unclaimedVal.toString(),
               targetWeightBps: 10_000,
               tokenId: null,
               positionManager: pool,
@@ -168,6 +180,7 @@ async function readVault(pin: VaultPin, now: number): Promise<VaultSnapshotRow> 
             : null,
           managedState,
           buybackReserveCurrentUsd: buybackValue === null ? null : buybackValue.toString(),
+          valuedBy,
         },
         tokenFees: [
           { token: entry.token0, gross: g0.toString(), buyback: b0.toString() },

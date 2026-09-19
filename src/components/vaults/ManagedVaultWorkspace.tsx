@@ -31,7 +31,7 @@ export function managedStatusKey(state: Parameters<typeof depositStatusOf>[0]): 
   return state.open ? "open" : "closed";
 }
 
-function Freshness({ observedAt, priceAsOf, delayed, valuationDelayed }: { observedAt?: string; priceAsOf?: string | null; delayed: boolean; valuationDelayed: boolean }) {
+function Freshness({ observedAt, priceAsOf, delayed, valuationDelayed, poolValued }: { observedAt?: string; priceAsOf?: string | null; delayed: boolean; valuationDelayed: boolean; poolValued: boolean }) {
   const t = useT("vaults");
   const client = useSyncExternalStore(noop, () => true, () => false);
   const fmt = (iso: string, full = false) =>
@@ -42,7 +42,7 @@ function Freshness({ observedAt, priceAsOf, delayed, valuationDelayed }: { obser
       ...(!client ? { timeZone: "UTC", timeZoneName: "short" } : {}),
     });
   const has = !!observedAt && Number.isFinite(Date.parse(observedAt));
-  const label = valuationDelayed ? t("fresh.valuationDelayed") : delayed ? t("fresh.updateDelayed") : has ? t("fresh.updated") : t("fresh.loading");
+  const label = poolValued ? t("fresh.poolValued") : valuationDelayed ? t("fresh.valuationDelayed") : delayed ? t("fresh.updateDelayed") : has ? t("fresh.updated") : t("fresh.loading");
   return (
     <details className={`vault-freshness${delayed || valuationDelayed ? " vault-freshness-delayed" : ""}`}>
       <summary>
@@ -173,7 +173,7 @@ export function ManagedVaultWorkspace({ pin }: { pin: VaultPin }) {
                 <h2>{t("liquidity.title")}</h2>
                 <p>{symbol} / USDG</p>
               </div>
-              <Freshness observedAt={holdings?.observedAt} priceAsOf={snapshot?.extras?.displayPriceAsOf} delayed={delayed} valuationDelayed={valuationDelayed} />
+              <Freshness observedAt={holdings?.observedAt} priceAsOf={snapshot?.extras?.displayPriceAsOf} delayed={delayed} valuationDelayed={valuationDelayed} poolValued={snapshot?.extras?.valuedBy === "pool"} />
             </div>
             <RangeChart points={points} lower={position?.status === "active" ? position.lower : null} upper={position?.status === "active" ? position.upper : null} current={position?.current ?? null} symbol={symbol} unavailable={!holdings} />
             <div className="sv-bounds">

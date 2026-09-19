@@ -71,6 +71,8 @@ export type SnapshotExtras = {
   feeApr: FeeAprInfo | null;
   managedState: ManagedState;
   buybackReserveCurrentUsd: string | null;
+  /** "oracle" when the valuation contract priced the vault; "pool" when the Chainlink reference was stale and the inventory was valued at the Uniswap pool price instead. */
+  valuedBy: "oracle" | "pool";
 };
 
 export type VaultSnapshot = {

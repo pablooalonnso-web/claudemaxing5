@@ -65,8 +65,8 @@ function Row({
       <td>
         <span className={`vault-table-tag vault-table-tag-${deposit.key}`}>{t(`depositStatus.${deposit.labelKey}`)}</span>
       </td>
-      <td data-label={t("table.tvl")} className="mono vault-table-num">
-        {formatUsd(tvl)}
+      <td data-label={t("table.tvl")} className="mono vault-table-num" title={view.extras?.valuedBy === "pool" ? t("table.poolValued") : undefined}>
+        {view.extras?.valuedBy === "pool" && tvl !== null ? `≈ ${formatUsd(tvl)}` : formatUsd(tvl)}
       </td>
       <td data-label={t("table.feeApr")} className="mono vault-table-num vault-table-apr" title={aprWindowText(t, view.aprInfo)}>
         {apr === null ? (
@@ -171,6 +171,7 @@ export function VaultTable() {
   const positionsTotal = positions.reduce((a, b) => a + b, 0);
   // Live per-vault reads win over the snapshot; a vault that has reported neither is left out.
   const valued = rows ? rows.filter((r) => r.assets !== null).length : 0;
+  const poolValued = rows ? rows.filter((r) => r.valuedBy === "pool").length : 0;
   const tvlNumbers = singles.map((p) => live[p.id]?.tvl ?? usdgToNumber(rows?.find((r) => r.vault.toLowerCase() === p.vault.toLowerCase())?.assets ?? null)).filter((v): v is number => v !== null);
   const tvlTotal = tvlNumbers.length ? formatUsd(tvlNumbers.reduce((a, b) => a + b, 0)) : "–";
   const feesTotal = rows ? formatUsd(usdgToNumber(sumColumn(rows, "fees"))) : "–";
@@ -193,7 +194,7 @@ export function VaultTable() {
             <article>
               <span className="stat-label">{t("stats.tvl")}</span>
               <strong className="stat-value">{tvlTotal}</strong>
-              <span className="stat-note">{rows ? (valued < rows.length ? t("stats.acrossSome", { n: valued, total: rows.length }) : t(rows.length === 1 ? "stats.acrossOne" : "stats.acrossMany", { n: rows.length })) : error ? t("stats.totalsUnavailable") : t("stats.loading")}</span>
+              <span className="stat-note">{rows ? (poolValued > 0 ? t("stats.poolValued", { n: poolValued, total: rows.length }) : valued < rows.length ? t("stats.acrossSome", { n: valued, total: rows.length }) : t(rows.length === 1 ? "stats.acrossOne" : "stats.acrossMany", { n: rows.length })) : error ? t("stats.totalsUnavailable") : t("stats.loading")}</span>
             </article>
             <article>
               <span className="stat-label">{t("stats.open")}</span>
