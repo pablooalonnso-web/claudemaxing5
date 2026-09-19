@@ -169,7 +169,9 @@ export function VaultTable() {
   const known = singles.filter((p) => live[p.id] !== undefined && live[p.id]?.open !== null).length;
   const positions = singles.map((p) => live[p.id]?.position ?? null).filter((v): v is number => v !== null && v > 0);
   const positionsTotal = positions.reduce((a, b) => a + b, 0);
-  const tvlTotal = rows ? formatUsd(usdgToNumber(sumColumn(rows, "assets"))) : "–";
+  // Live per-vault reads win over the snapshot; a vault that has reported neither is left out.
+  const tvlNumbers = singles.map((p) => live[p.id]?.tvl ?? usdgToNumber(rows?.find((r) => r.vault.toLowerCase() === p.vault.toLowerCase())?.assets ?? null)).filter((v): v is number => v !== null);
+  const tvlTotal = tvlNumbers.length ? formatUsd(tvlNumbers.reduce((a, b) => a + b, 0)) : "–";
   const feesTotal = rows ? formatUsd(usdgToNumber(sumColumn(rows, "fees"))) : "–";
 
   return (

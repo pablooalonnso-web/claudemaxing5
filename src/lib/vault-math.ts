@@ -84,17 +84,21 @@ export function describeAprWindow(info?: { source?: string; observedSeconds?: nu
 
 /** Sum a raw-integer column across snapshot rows; null if any row is missing. */
 export function sumColumn<T extends Record<string, unknown>>(rows: T[], key: keyof T): string | null {
+  // A vault whose snapshot has not landed yet contributes nothing rather than blanking the
+  // whole total; the figure is a lower bound until every row reports, never a dash.
   const seen = new Set<string>();
   let total = 0n;
+  let counted = 0;
   for (const row of rows) {
     const vault = String(row.vault).toLowerCase();
-    if (seen.has(vault)) return null;
+    if (seen.has(vault)) continue;
     seen.add(vault);
     const v = row[key];
-    if (v === null || typeof v !== "string" || !/^\d+$/.test(v)) return null;
+    if (v === null || typeof v !== "string" || !/^\d+$/.test(v)) continue;
     total += BigInt(v);
+    counted++;
   }
-  return total.toString();
+  return counted ? total.toString() : null;
 }
 
 export function ownerPositionValue(
