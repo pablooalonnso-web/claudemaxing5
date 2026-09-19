@@ -29,7 +29,8 @@ export async function GET(_req: Request, ctx: { params: Promise<{ kind: string }
     };
     const value = values[kind];
     if (value === undefined) return new NextResponse("Unknown supply kind", { status: 404 });
-    const text = formatUnits(value, 18).replace(/\.?0+$/, "");
+    const raw = formatUnits(value, 18);
+    const text = raw.includes(".") ? raw.replace(/0+$/, "").replace(/\.$/, "") : raw;
     return new NextResponse(text, { headers: { "content-type": "text/plain; charset=utf-8", "cache-control": "public, max-age=60" } });
   } catch (error) {
     return new NextResponse(error instanceof Error ? error.message : "Supply read failed", { status: 503 });
