@@ -15,6 +15,14 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 const BASKET = ["MSTR", "PLTR", "GME", "TSLA", "NVDA", "AMD"];
+/** Illustrative weights for the card art; the page itself computes the live split. */
+const ALLOCATOR_PREVIEW: [string, number][] = [
+  ["CRCL", 23],
+  ["USDG", 22],
+  ["PLTR", 20],
+  ["INTC", 18],
+  ["META", 17],
+];
 
 export default async function StrategiesPage() {
   const t = await getT("strategies");
@@ -42,6 +50,54 @@ export default async function StrategiesPage() {
       </section>
       <div className="strategies-page">
         <div className="strategy-grid">
+          <article className="strategy-card">
+            <header className="strategy-card-head">
+              <div>
+                <p className="eyebrow">{t("allocator.eyebrow")}</p>
+                <h2>{t("allocator.title")}</h2>
+              </div>
+              <span className="strategy-status strategy-status-live">
+                <i aria-hidden="true" /> {t("allocator.live")}
+              </span>
+            </header>
+            <div className="strategy-visual strategy-allocator" aria-label={t("allocator.visualAria")}>
+              <div className="strategy-allocator-bars" aria-hidden="true">
+                {ALLOCATOR_PREVIEW.map(([s, w]) => (
+                  <span key={s} style={{ width: `${w}%` }}>
+                    {s === "USDG" ? <Image src="/brands/usdg.png" alt="" width={28} height={28} /> : <StockLogo symbol={s} size={28} />}
+                    <b>{w}%</b>
+                  </span>
+                ))}
+              </div>
+              <div className="strategy-basket-copy">
+                <b>{t("allocator.visualTitle")}</b>
+                <span>{t("allocator.visualSub")}</span>
+              </div>
+            </div>
+            <p className="strategy-lede">{t("allocator.lede")}</p>
+            <dl className="strategy-facts">
+              <div>
+                <dt>{t("facts.earns")}</dt>
+                <dd>{t("allocator.earns")}</dd>
+              </div>
+              <div>
+                <dt>{t("facts.exposure")}</dt>
+                <dd>{t("allocator.exposure")}</dd>
+              </div>
+              <div>
+                <dt>{t("facts.deposit")}</dt>
+                <dd className="strategy-deposit">
+                  <Image src="/brands/usdg.png" alt="" width={22} height={22} /> USDG
+                </dd>
+              </div>
+            </dl>
+            <footer className="strategy-card-foot">
+              <span className="strategy-closed">{t("allocator.foot")}</span>
+              <Link href="/allocator">
+                {t("allocator.open")} <ArrowRight size={14} aria-hidden="true" />
+              </Link>
+            </footer>
+          </article>
           <article className="strategy-card">
             <header className="strategy-card-head">
               <div>

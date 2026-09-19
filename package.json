@@ -10,7 +10,8 @@
     "start": "next start",
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
-    "verify": "tsx --tsconfig tsconfig.json scripts/verify.ts"
+    "verify": "tsx --tsconfig tsconfig.json scripts/verify.ts",
+    "allocator": "tsx --tsconfig tsconfig.json scripts/allocator.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.126.0",

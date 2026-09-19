@@ -427,7 +427,7 @@ async function main() {
   const site = group("site", "Production site", SITE ? `Pages and APIs served from ${SITE}.` : "Skipped (--no-site).");
   if (SITE) {
     const get = (path: string, init?: RequestInit) => fetch(SITE + path, { ...init, redirect: "manual", signal: AbortSignal.timeout(60_000), headers: { "user-agent": "vertex-verify", ...(init?.headers ?? {}) } });
-    const pages = ["/", "/vaults", `/vaults/${aapl?.id ?? VAULT_PINS[0].id}`, "/lending", "/lending/meta", "/trade/swap", "/portfolio", "/strategies", "/intelligence", "/docs", "/help", "/help/contact", "/status"];
+    const pages = ["/", "/vaults", `/vaults/${aapl?.id ?? VAULT_PINS[0].id}`, "/lending", "/lending/meta", "/trade/swap", "/portfolio", "/strategies", "/allocator", "/intelligence", "/docs", "/help", "/help/contact", "/status"];
     for (const path of pages) {
       await check(site, `GET ${path}`, async () => {
         const r = await get(path);
@@ -461,6 +461,15 @@ async function main() {
       const r = await get("/api/lending/v2/markets");
       const j = (await r.json()) as { data?: { contractState: { name: string } }[] };
       return { status: r.status === 200 && j.data?.length ? "pass" : "fail", detail: `${r.status}: ${j.data?.length ?? 0} market(s), ${j.data?.map((m) => m.contractState.name).join(", ") ?? ""}` };
+    });
+    await check(site, "API /api/allocator", async () => {
+      const r = await get("/api/allocator?amount=1000&risk=balanced");
+      const j = (await r.json()) as { model?: string; positions?: { symbol: string; kind: string; weight: number; amount: string }[]; lendingShare?: number };
+      const positions = j.positions ?? [];
+      const sum = positions.reduce((a, p) => a + Number(p.amount), 0);
+      const weights = positions.reduce((a, p) => a + p.weight, 0);
+      const ok = r.status === 200 && positions.length > 0 && Math.abs(sum - 1000) < 0.000001 && Math.abs(weights - 1) < 0.0001;
+      return { status: ok ? "pass" : "fail", detail: `${r.status}: model ${j.model ?? "?"}, ${positions.length} position(s) summing to ${sum.toFixed(2)} USDG, weights ${weights.toFixed(4)}; ${positions.map((p) => `${p.symbol} ${(p.weight * 100).toFixed(1)}%`).join(", ")}` };
     });
     await check(site, "API /api/trade/quotes", async () => {
       if (!aapl) return { status: "skip", detail: "AAPL vault missing" };

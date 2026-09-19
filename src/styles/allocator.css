@@ -1,0 +1,44 @@
+/* Allocator v0: builds on the basket layout in strategies.css. */
+.alloc-controls{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.2fr);gap:16px;align-items:stretch}
+.alloc-risk{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;padding:6px;border:1px solid var(--line);border-radius:var(--radius-sm);background:var(--paper)}
+.alloc-risk button{display:flex;flex-direction:column;align-items:flex-start;justify-content:center;gap:3px;min-height:64px;padding:10px 12px;border:0;border-radius:8px;background:transparent;color:var(--ink-soft);font:inherit;text-align:left;cursor:pointer;min-width:0}
+.alloc-risk button b{font-size:14px;font-weight:600;color:var(--ink)}
+.alloc-risk button span{font-size:11px;line-height:1.35;color:var(--muted)}
+.alloc-risk button.active{background:var(--slate);color:var(--fog)}
+.alloc-risk button.active b,.alloc-risk button.active span{color:var(--fog)}
+.alloc-risk button.active span{opacity:.8}
+.alloc-risk button:disabled{cursor:default;opacity:.7}
+.alloc-leg{grid-template-columns:34px 36px minmax(0,1fr) auto 120px;row-gap:8px}
+.alloc-reasons{grid-column:3/-1;list-style:none;margin:0;padding:0;display:flex;flex-wrap:wrap;gap:6px}
+.alloc-reasons li{padding:3px 9px;border-radius:999px;background:var(--cream-2);border:1px solid var(--line-soft);color:var(--ink-soft);font-size:11.5px;line-height:1.4}
+.alloc-reasons li.warn{background:rgba(255,172,254,.2);border-color:rgba(164,69,159,.25);color:#7a2f76}
+.alloc-score{display:inline-flex;align-items:center;gap:8px;font-size:12px;color:var(--muted);min-width:0}
+.alloc-score-bars{display:inline-flex;align-items:flex-end;gap:2px;width:22px;height:14px;flex:0 0 auto}
+.alloc-score-bars i{display:block;flex:1;background:var(--accent);border-radius:1px;opacity:.85}
+.alloc-score-bars i:nth-child(2){opacity:.65}.alloc-score-bars i:nth-child(3){opacity:.5}.alloc-score-bars i:nth-child(4){opacity:.35}
+.alloc-usdg{display:inline-flex;flex:0 0 auto;border-radius:50%;overflow:hidden;background:var(--card)}
+.alloc-usdg img{width:100%;height:100%;object-fit:contain}
+.alloc-foot-actions{display:inline-flex;align-items:center;gap:16px}
+.alloc-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:24px}
+.alloc-weights{margin:0;display:grid;gap:10px}
+.alloc-weights>div{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px;align-items:center}
+.alloc-weights dt{display:grid;gap:2px;min-width:0}
+.alloc-weights dt b{font-size:14px;font-weight:600}
+.alloc-weights dt span{font-size:11.5px;line-height:1.4;color:var(--muted)}
+.alloc-weights dd{margin:0;display:flex;align-items:center;gap:10px}
+.alloc-weights dd i{display:block;height:8px;border-radius:4px;background:var(--accent);flex:0 0 auto;max-width:calc(100% - 44px)}
+.alloc-weights dd span{font-size:12px;color:var(--ink-soft);min-width:34px;text-align:right}
+.alloc-limits{list-style:none;margin:0;padding:12px 0 0;border-top:1px solid var(--line-soft);display:grid;gap:6px;font-size:13px;color:var(--ink-soft)}
+.alloc-limits li::before{content:"·";margin-right:8px;color:var(--muted)}
+.allocator .basket-small{gap:16px;flex-wrap:wrap}
+.allocator .basket-small a{display:inline-flex;align-items:center;gap:4px;color:var(--accent);font-weight:500}
+.alloc-hints{display:grid;gap:12px}
+.alloc-hints ul{list-style:none;margin:0;padding:0;display:grid;gap:6px}
+.alloc-hints li{display:flex;align-items:center;gap:10px;padding:8px 10px;border:1px solid var(--line-soft);border-radius:8px;font-size:13px}
+.alloc-hints li>span{flex:1;display:grid;gap:1px;min-width:0}
+.alloc-hints li small{font-size:11px;color:var(--muted);font-variant-numeric:tabular-nums}
+.alloc-hints li em{font-style:normal;font-family:var(--mono);font-size:10px;letter-spacing:.06em;text-transform:uppercase;padding:3px 8px;border-radius:999px;background:var(--silver)}
+.alloc-hints li em.hold{background:var(--seafoam)}.alloc-hints li em.add{background:var(--lime,#ecffa3)}.alloc-hints li em.trim,.alloc-hints li em.exit{background:var(--magenta)}
+.alloc-hints li a{display:inline-flex;align-items:center;gap:4px;color:var(--accent);font-weight:500;white-space:nowrap}
+@media (max-width:900px){.alloc-grid{grid-template-columns:minmax(0,1fr)}}
+@media (max-width:760px){.alloc-controls{grid-template-columns:1fr}.alloc-risk{grid-template-columns:1fr}.alloc-risk button{min-height:0}.alloc-leg{grid-template-columns:34px 36px minmax(0,1fr)}.alloc-reasons{grid-column:1/-1}.alloc-weights>div{grid-template-columns:1fr}}

@@ -83,6 +83,17 @@ Vertex is a progressive web app. Open usevertex.xyz on a phone and use "Add to h
 
 The service worker caches the app shell and build assets only. API responses, the RPC relay and the verification report always go to the network, so a figure is either live or absent, never stale. With no connection the app shows an honest offline screen rather than old balances.
 
+## Allocator
+
+`/allocator` is the first step of the roadmap: enter a USDG amount and a risk setting, and the site proposes a split across
+the open vaults and the lending market with a score and the reasons for each position. Execution runs from the user's own
+wallet through the same router and market contracts as the product pages, one leg after another; nothing is pooled and no
+new contract is involved. The scoring model is `src/lib/allocator.ts`: four component scores per candidate (yield, depth,
+health, stability) from the same chain reads the vault pages use, weighted by profile, capped per position, with a lending
+floor for the conservative and balanced profiles. `GET /api/allocator?amount=1000&risk=balanced` returns the proposal as
+JSON, and `npm run allocator -- --amount 1000 --risk balanced` runs the same model from the command line against the public
+data. It ranks, it does not forecast.
+
 ## Badges
 
 Live SVG badges, generated per request from chain reads and the latest verification run. Drop one anywhere an image works:
