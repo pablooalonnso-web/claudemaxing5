@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Offline · Vertex</title>
+    <style>
+      :root { color-scheme: light; }
+      body { margin: 0; min-height: 100vh; display: grid; place-items: center; padding: 32px; background: #F7F7F9; color: #3D3B4F;
+        font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif; }
+      main { max-width: 420px; text-align: center; }
+      img { width: 72px; height: 72px; }
+      h1 { font-size: 30px; letter-spacing: -0.03em; margin: 26px 0 14px; }
+      p { color: #6b6979; line-height: 1.65; margin: 0 0 28px; font-size: 16px; }
+      button { font: inherit; font-size: 15px; padding: 13px 24px; border: 0; border-radius: 999px;
+        background: #3D3B4F; color: #F7F7F9; cursor: pointer; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <img src="/icon-192.png" alt="" />
+      <h1>You are offline</h1>
+      <p>
+        Every number on Vertex is read from Robinhood Chain when you load the page, so there is nothing
+        meaningful to show without a connection. Stale balances would be worse than none.
+      </p>
+      <button type="button" onclick="location.reload()">Try again</button>
+    </main>
+  </body>
+</html>

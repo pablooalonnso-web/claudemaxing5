@@ -1,8 +1,9 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import type { ReactNode } from "react";
 import { BRAND } from "@/lib/brand";
 import { anybody, dmSans, nanumPen, spaceMono } from "@/lib/fonts";
 import { Providers } from "@/components/Providers";
+import { ServiceWorker } from "@/components/ServiceWorker";
 import { I18nProvider } from "@/i18n/client";
 import { LOCALE_TAGS } from "@/i18n/config";
 import { resolveAll } from "@/i18n";
@@ -25,6 +26,8 @@ export const metadata: Metadata = {
     description: BRAND.ogDescription,
     images: ["/og.png"],
   },
+  manifest: "/manifest.webmanifest",
+  appleWebApp: { capable: true, title: BRAND.name, statusBarStyle: "default" },
   icons: {
     icon: [
       { url: "/favicon.ico", type: "image/x-icon", sizes: "16x16" },
@@ -34,12 +37,24 @@ export const metadata: Metadata = {
   },
 };
 
+/** Drives the browser chrome colour on installed and mobile sessions. */
+export const viewport: Viewport = {
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#F7F7F9" },
+    { media: "(prefers-color-scheme: dark)", color: "#3D3B4F" },
+  ],
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+};
+
 export default async function RootLayout({ children }: { children: ReactNode }) {
   const locale = await getLocale();
   const messages = resolveAll(locale);
   return (
     <html lang={LOCALE_TAGS[locale]} className={`${dmSans.variable} ${anybody.variable} ${spaceMono.variable} ${nanumPen.variable}`}>
       <body>
+        <ServiceWorker />
         <I18nProvider locale={locale} messages={messages}>
           <Providers>{children}</Providers>
         </I18nProvider>

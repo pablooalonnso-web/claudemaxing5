@@ -77,6 +77,12 @@ and a Markdown copy under `verification/`. `--no-site` skips the site checks, `-
 
 The interface ships in English, Spanish, Simplified Chinese, French and German. The switcher sits in the header (and in the mobile menu and footer); the choice is stored in a `vertex-lang` cookie, and first-time visitors get the language their browser asks for. Messages live in `src/i18n/messages/<namespace>.ts`, one table per language, with English as the fallback for any missing key. Chain data, the intelligence brief and the verification report stay in English because they are generated, not written.
 
+## Install as an app
+
+Vertex is a progressive web app. Open usevertex.xyz on a phone and use "Add to home screen"; on desktop Chrome an install button appears in the address bar. It runs standalone, with shortcuts to Vaults, Portfolio and Verification.
+
+The service worker caches the app shell and build assets only. API responses, the RPC relay and the verification report always go to the network, so a figure is either live or absent, never stale. With no connection the app shows an honest offline screen rather than old balances.
+
 ## Badges
 
 Live SVG badges, generated per request from chain reads and the latest verification run. Drop one anywhere an image works:
