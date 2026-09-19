@@ -477,10 +477,16 @@ async function main() {
     });
     await check(site, "API /api/allocator", async () => {
       const r = await get("/api/allocator?amount=1000&risk=balanced");
-      const j = (await r.json()) as { model?: string; positions?: { symbol: string; kind: string; weight: number; amount: string }[]; lendingShare?: number };
+      const j = (await r.json()) as { model?: string; positions?: { symbol: string; kind: string; weight: number; amount: string }[]; excluded?: { symbol: string; reason: string }[]; lendingShare?: number };
       const positions = j.positions ?? [];
       const sum = positions.reduce((a, p) => a + Number(p.amount), 0);
       const weights = positions.reduce((a, p) => a + p.weight, 0);
+      // With every vault paused (stale weekend feeds) and the market closed, an empty proposal with reasons is the right answer.
+      if (r.status === 200 && positions.length === 0 && (j.excluded?.length ?? 0) > 0) {
+        const reasons = new Map<string, number>();
+        for (const x of j.excluded ?? []) reasons.set(x.reason, (reasons.get(x.reason) ?? 0) + 1);
+        return { status: "warn", detail: `model ${j.model ?? "?"}: no candidate qualifies right now; ${[...reasons].map(([k, n]) => `${n} × ${k}`).join("; ")}` };
+      }
       const ok = r.status === 200 && positions.length > 0 && Math.abs(sum - 1000) < 0.000001 && Math.abs(weights - 1) < 0.0001;
       return { status: ok ? "pass" : "fail", detail: `${r.status}: model ${j.model ?? "?"}, ${positions.length} position(s) summing to ${sum.toFixed(2)} USDG, weights ${weights.toFixed(4)}; ${positions.map((p) => `${p.symbol} ${(p.weight * 100).toFixed(1)}%`).join(", ")}` };
     });

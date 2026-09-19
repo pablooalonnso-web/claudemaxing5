@@ -48,7 +48,7 @@ export const allocator: NamespaceMessages = {
     "legs.reasonsAria": "Why {symbol} scored this way",
     "legs.skipped": "{symbol} skipped: the router cannot quote a deposit right now",
     "legs.skippedNext": "The next candidate took its place.",
-    "legs.none": "No position qualifies right now. A vault needs deposits open and at least {floor} in it to be ranked.",
+    "legs.none": "No position qualifies right now. A vault needs deposits open, a fresh Chainlink reference and at least {floor} in it to be ranked. Stock feeds pause outside US market hours.",
     "legs.reading": "Reading the vaults…",
 
     "reason.apr": "Realized fee APR {apr}% over the last 24h",
@@ -189,7 +189,7 @@ export const allocator: NamespaceMessages = {
     "legs.reasonsAria": "Por qué {symbol} tiene esta puntuación",
     "legs.skipped": "{symbol} omitido: el router no puede cotizar un depósito ahora mismo",
     "legs.skippedNext": "El siguiente candidato ocupó su lugar.",
-    "legs.none": "Ninguna posición cumple ahora mismo. Un vault necesita depósitos abiertos y al menos {floor} dentro para entrar en el ranking.",
+    "legs.none": "Ninguna posición cumple ahora mismo. Un vault necesita depósitos abiertos, una referencia de Chainlink fresca y al menos {floor} dentro para entrar en el ranking. Los feeds de acciones se pausan fuera del horario del mercado de EE. UU.",
     "legs.reading": "Leyendo los vaults…",
 
     "reason.apr": "APR de comisiones realizado del {apr}% en las últimas 24 h",
@@ -330,7 +330,7 @@ export const allocator: NamespaceMessages = {
     "legs.reasonsAria": "{symbol} 评分的原因",
     "legs.skipped": "已跳过 {symbol}：路由器目前无法报价存款",
     "legs.skippedNext": "由下一个候选补位。",
-    "legs.none": "目前没有符合条件的仓位。金库需要开放存款且至少有 {floor} 才能进入排名。",
+    "legs.none": "目前没有符合条件的仓位。金库需要开放存款、最新的 Chainlink 参考价且至少有 {floor} 才能进入排名。美股非交易时段股票价格源会暂停。",
     "legs.reading": "正在读取金库…",
 
     "reason.apr": "过去 24 小时的实际费用 APR 为 {apr}%",
@@ -471,7 +471,7 @@ export const allocator: NamespaceMessages = {
     "legs.reasonsAria": "Pourquoi {symbol} obtient ce score",
     "legs.skipped": "{symbol} ignoré : le routeur ne peut pas coter un dépôt pour le moment",
     "legs.skippedNext": "Le candidat suivant a pris sa place.",
-    "legs.none": "Aucune position n'est éligible pour le moment. Un vault doit accepter les dépôts et contenir au moins {floor} pour être classé.",
+    "legs.none": "Aucune position n'est éligible pour le moment. Un vault doit accepter les dépôts, disposer d'une référence Chainlink récente et contenir au moins {floor} pour être classé. Les flux actions se mettent en pause hors des heures de marché américaines.",
     "legs.reading": "Lecture des vaults…",
 
     "reason.apr": "APR des frais réalisé de {apr} % sur les dernières 24 h",
@@ -612,7 +612,7 @@ export const allocator: NamespaceMessages = {
     "legs.reasonsAria": "Warum {symbol} so bewertet wurde",
     "legs.skipped": "{symbol} übersprungen: der Router kann gerade keine Einzahlung quoten",
     "legs.skippedNext": "Der nächste Kandidat ist nachgerückt.",
-    "legs.none": "Gerade qualifiziert sich keine Position. Ein Vault braucht offene Einzahlungen und mindestens {floor} darin, um gerankt zu werden.",
+    "legs.none": "Gerade qualifiziert sich keine Position. Ein Vault braucht offene Einzahlungen, eine frische Chainlink-Referenz und mindestens {floor} darin, um gerankt zu werden. Aktien-Feeds pausieren außerhalb der US-Handelszeiten.",
     "legs.reading": "Vaults werden gelesen…",
 
     "reason.apr": "Realisierter Gebühren-APR von {apr} % in den letzten 24 h",
