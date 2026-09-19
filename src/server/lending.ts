@@ -83,7 +83,9 @@ async function readMarket(pin: LendingMarketPin): Promise<LendingMarketRow> {
     client.readContract({ address: pin.adapter as Address, abi: lendingValuationAbi, functionName: "price" }).catch(() => null),
   ]);
   const borrowed = totals[0];
-  const utilization = supplied === 0n ? 0 : Number((borrowed * 10_000n) / supplied);
+  // While the oracle is unavailable the market fails closed and totalSupplyAssets reports 0; the deposits are still there as cash plus debt.
+  const suppliedAssets = supplied === 0n && tss > 0n ? cash + borrowed : supplied;
+  const utilization = suppliedAssets === 0n ? 0 : Number((borrowed * 10_000n) / suppliedAssets);
   return {
     schemaVersion: 2,
     pinId: pin.id,
@@ -111,7 +113,7 @@ async function readMarket(pin: LendingMarketPin): Promise<LendingMarketRow> {
     },
     limits: limits ? { maxLtvBps: limits[0].toString(), concentrationBps: limits[1].toString(), supplyCap: limits[2].toString(), borrowCap: limits[3].toString() } : null,
     accounting: {
-      supplied: supplied.toString(),
+      supplied: suppliedAssets.toString(),
       borrowed: borrowed.toString(),
       cash: cash.toString(),
       reserve: totals[1].toString(),

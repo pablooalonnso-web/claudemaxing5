@@ -184,7 +184,7 @@ export function LendingDirectory({ initial }: { initial: LendingMarketRow[] | nu
                       </Link>
                     </td>
                     <td data-label={t("dir.th.status")}>
-                      <span className={`vault-table-tag ${r.contractState.name === "Active" ? "vault-table-tag-open" : "vault-table-tag-paused"}`}>{stateLabel(t, r.contractState.name)}</span>
+                      <span className={`vault-table-tag ${r.contractState.name === "Active" ? "vault-table-tag-open" : "vault-table-tag-paused"}`}>{!r.oracle.available && r.contractState.name !== "Active" ? t("state.stale") : stateLabel(t, r.contractState.name)}</span>
                     </td>
                     <td data-label={t("dir.th.lendersEarn")} className="mono ln-rate-value">
                       {formatRate18(r.rates.supplyApr)}

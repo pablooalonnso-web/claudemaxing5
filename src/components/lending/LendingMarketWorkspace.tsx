@@ -228,7 +228,7 @@ export function LendingMarketWorkspace({ pin, initial }: { pin: LendingMarketPin
               <div>
                 <h1>{t("ws.pair", { symbol })}</h1>
                 <div className="masthead-tags ln-meta">
-                  <span className={`vault-table-tag ${active ? "vault-table-tag-open" : "vault-table-tag-paused"}`}>{market ? stateLabel(t, market.contractState.name) : t("state.checking")}</span>
+                  <span className={`vault-table-tag ${active ? "vault-table-tag-open" : "vault-table-tag-paused"}`}>{market ? (!market.oracle.available && !active ? t("state.stale") : stateLabel(t, market.contractState.name)) : t("state.checking")}</span>
                   <span className="dtag">
                     {t("ws.tag.borrowAgainst", { symbol })}{" "}
                     <Term label="" title={t("ws.tag.vaultShares")} tip={t("ws.tag.vaultSharesTip", { brand: BRAND.name })} />
