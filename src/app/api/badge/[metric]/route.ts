@@ -29,7 +29,7 @@ function badge(label: string, value: string, accent: string) {
   const vw = width(value);
   const w = lw + vw;
   const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="24" role="img" aria-label="${esc(label)}: ${esc(value)}">
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="24" viewBox="0 0 ${w} 24" role="img" aria-label="${esc(label)}: ${esc(value)}">
   <title>${esc(label)}: ${esc(value)}</title>
   <rect width="${w}" height="24" rx="6" fill="${SLATE}"/>
   <rect x="${lw}" width="${vw}" height="24" rx="6" fill="${accent}"/>
