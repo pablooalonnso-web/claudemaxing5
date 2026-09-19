@@ -51,6 +51,7 @@ const COLUMNS: Column[] = [
   {
     key: "support",
     links: [
+      { href: BRAND.telegramUrl, key: "telegram", external: true },
       { href: "/help/contact", key: "contact" },
       { href: "/docs#faq", key: "faq" },
       { href: "/verify", key: "security" },
@@ -100,6 +101,9 @@ export async function SiteFooter() {
                   <div className="gf-socials">
                     <a href={BRAND.xUrl} target="_blank" rel="noopener noreferrer" aria-label={t("aria.onX", { name: BRAND.name })}>
                       <Image src="/brands/x.svg" alt="" width={14} height={14} />
+                    </a>
+                    <a href={BRAND.telegramUrl} target="_blank" rel="noopener noreferrer" aria-label={t("aria.onTelegram", { name: BRAND.name })}>
+                      <Image src="/brands/telegram.svg" alt="" width={14} height={14} />
                     </a>
                     <a href="https://robinhoodchain.blockscout.com" target="_blank" rel="noopener noreferrer" aria-label={t("aria.explorer", { chain: CHAIN_NAME })}>
                       <Image src="/brands/robinhood-mark.svg" alt="" width={14} height={14} />

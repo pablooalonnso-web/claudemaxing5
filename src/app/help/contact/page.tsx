@@ -43,6 +43,9 @@ export default async function HelpContactPage() {
               {PORTAL ? t("contact.ticket.cta.portal") : t("contact.ticket.cta.x", { handle: BRAND.xHandle })} <ArrowUpRight size={18} aria-hidden="true" />
             </a>
             <small className={styles.destination}>{t("contact.ticket.destination", { host })}</small>
+            <a className={styles.secondaryLink} href={BRAND.telegramUrl} target="_blank" rel="noopener noreferrer">
+              {t("contact.ticket.telegram")}
+            </a>
           </section>
           <section className={styles.prepare} aria-labelledby="prepare-heading">
             <p className={styles.eyebrow}>{t("contact.prepare.eyebrow")}</p>

@@ -15,6 +15,8 @@ export const BRAND = {
   /** X / Twitter handle without the @. */
   xHandle: "useevertex",
   xUrl: "https://x.com/useevertex",
+  /** Telegram discussion group. Override with NEXT_PUBLIC_TELEGRAM_URL if the invite is rotated. */
+  telegramUrl: process.env.NEXT_PUBLIC_TELEGRAM_URL ?? "https://t.me/+qUeVjZqryk4yOThk",
   repoUrl: process.env.NEXT_PUBLIC_REPO_URL ?? "https://github.com/pablooalonnso-web/claudemaxing5",
   /** Branch the deployed site is built from; file links in the docs point at it. */
   repoBranch: process.env.NEXT_PUBLIC_REPO_BRANCH ?? "main",
