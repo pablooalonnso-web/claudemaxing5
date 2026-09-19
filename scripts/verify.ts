@@ -352,6 +352,77 @@ async function main() {
     return { status: code && code !== "0x" ? "pass" : "fail", detail: `${(built.data.length - 2) / 2} bytes of calldata for router ${short(built.routerAddress)}${code && code !== "0x" ? " (contract present on chain)" : " (no code at router address)"}` };
   });
 
+  // ------------------------------------------------------------ token supply
+  const tok = group(
+    "token",
+    "Token and liquidity",
+    "Where the VERTEX supply actually sits: the burn address, the wallets the project has used, and the pool. Liquidity on Robinhood Chain lives inside the Uniswap V4 singleton, and a liquidity position is owned by whoever holds it; these checks read the project's own wallets so anyone can confirm what they do and do not control.",
+  );
+  const TEAM_WALLETS: { label: string; address: Address }[] = [
+    { label: "Deployer wallet", address: "0x0Ce9f80e1Ad5698d5F82B1Ce7AD4db4b835556A2" },
+    { label: "Buyback wallet", address: "0xBABe28C7325f9549C406a1504B701594D27B5676" },
+    { label: "Launch contract", address: "0xc90640704bDA73422469420dfc2AD0ed7aE90310" },
+  ];
+  const TRANSFER_TOPIC = "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef" as Hex;
+  const LAUNCH_BLOCK = 65_890_000n;
+
+  await check(tok, "Supply and burn", async () => {
+    const [supply, burned] = await Promise.all([
+      client.readContract({ address: TOKEN_ADDRESS, abi: erc20Abi, functionName: "totalSupply" }),
+      client.readContract({ address: TOKEN_ADDRESS, abi: erc20Abi, functionName: "balanceOf", args: [BURN_ADDRESS] }),
+    ]);
+    const share = (Number(burned) / Number(supply)) * 100;
+    return { detail: `${amount(supply, 18)} minted, ${amount(burned, 18)} (${share.toFixed(2)}%) held by the burn address, ${amount(supply - burned, 18)} circulating` };
+  });
+
+  for (const w of TEAM_WALLETS) {
+    await check(tok, w.label, async () => {
+      const balance = await client.readContract({ address: TOKEN_ADDRESS, abi: erc20Abi, functionName: "balanceOf", args: [w.address] });
+      // An ERC-721 Transfer carries four topics (signature, from, to, tokenId); an ERC-20 Transfer carries three.
+      // A Uniswap liquidity position is an ERC-721, so a wallet that has never received one cannot be holding one.
+      // The public RPC pool rejects a single full-range getLogs often enough that one
+      // bad response would fail the check, so the window is walked in chunks and each
+      // chunk gets its own retries.
+      const head = await client.getBlockNumber();
+      const STEP = 250_000n;
+      const rawLogs = async (topics: (Hex | null)[]) => {
+        const out: { topics: Hex[] }[] = [];
+        for (let from = LAUNCH_BLOCK; from <= head; from += STEP) {
+          const to = from + STEP - 1n > head ? head : from + STEP - 1n;
+          let chunk: { topics: Hex[] }[] | null = null;
+          for (let attempt = 1; attempt <= 4 && !chunk; attempt++) {
+            try {
+              chunk = (await client.request({ method: "eth_getLogs", params: [{ fromBlock: toHex(from), toBlock: toHex(to), topics }] })) as { topics: Hex[] }[];
+            } catch {
+              await new Promise((r) => setTimeout(r, 400 * attempt));
+            }
+          }
+          if (!chunk) throw new Error(`log query failed for blocks ${from}-${to}`);
+          out.push(...chunk);
+        }
+        return out;
+      };
+      const [incoming, outgoing] = await Promise.all([rawLogs([TRANSFER_TOPIC, null, pad(w.address)]), rawLogs([TRANSFER_TOPIC, pad(w.address)])]);
+      const nftsIn = incoming.filter((l) => l.topics.length === 4).length;
+      const nftsOut = outgoing.filter((l) => l.topics.length === 4).length;
+      const held = balance === 0n ? "holds no VERTEX" : `holds ${amount(balance, 18)} VERTEX`;
+      const positions = nftsIn === 0 && nftsOut === 0 ? "and has never received or sent an ERC-721, so it holds no liquidity position" : `and has handled ${nftsIn} incoming and ${nftsOut} outgoing ERC-721 transfers`;
+      return { status: nftsIn === 0 && nftsOut === 0 ? "pass" : "warn", detail: `${short(w.address)} ${held}, ${positions}` };
+    });
+  }
+
+  await check(tok, "Liquidity venue", async () => {
+    const pool = "0x8366a39CC670B4001A1121B8F6A443A643e40951" as Address;
+    const [held, code] = await Promise.all([
+      client.readContract({ address: TOKEN_ADDRESS, abi: erc20Abi, functionName: "balanceOf", args: [pool] }),
+      client.getCode({ address: pool }),
+    ]);
+    if (!code || code === "0x") return { status: "fail", detail: `No contract at ${short(pool)}` };
+    const supply = await client.readContract({ address: TOKEN_ADDRESS, abi: erc20Abi, functionName: "totalSupply" });
+    const share = (Number(held) / Number(supply)) * 100;
+    return { detail: `${amount(held, 18)} VERTEX (${share.toFixed(2)}% of supply) sits in the Uniswap V4 singleton at ${short(pool)}, which custodies every pool on the chain` };
+  });
+
   // ------------------------------------------------------------------- site
   const site = group("site", "Production site", SITE ? `Pages and APIs served from ${SITE}.` : "Skipped (--no-site).");
   if (SITE) {
