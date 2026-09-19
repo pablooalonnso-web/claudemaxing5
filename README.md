@@ -77,6 +77,18 @@ and a Markdown copy under `verification/`. `--no-site` skips the site checks, `-
 
 The interface ships in English, Spanish, Simplified Chinese, French and German. The switcher sits in the header (and in the mobile menu and footer); the choice is stored in a `vertex-lang` cookie, and first-time visitors get the language their browser asks for. Messages live in `src/i18n/messages/<namespace>.ts`, one table per language, with English as the fallback for any missing key. Chain data, the intelligence brief and the verification report stay in English because they are generated, not written.
 
+## Badges
+
+Live SVG badges, generated per request from chain reads and the latest verification run. Drop one anywhere an image works:
+
+```
+![burned](https://usevertex.xyz/api/badge/burned.svg)
+![circulating](https://usevertex.xyz/api/badge/circulating.svg)
+![verified](https://usevertex.xyz/api/badge/checks.svg)
+```
+
+Available metrics: `burned`, `circulating`, `supply`, `vaults`, `checks`, `split`.
+
 ## Configuration
 
 See `.env.example`. Everything works with defaults; the variables let you point at another RPC, an upstream snapshot API,
