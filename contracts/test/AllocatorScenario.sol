@@ -95,6 +95,15 @@ contract AllocatorScenario {
             r.strangerError = bytes4(err);
         }
 
+        require(r.weightError == VertexAllocatorV1.WeightExceeded.selector, "weight limit not enforced");
+        require(r.receiverError == VertexAllocatorV1.BadReceiver.selector, "receiver check not enforced");
+        require(r.strangerError == VertexAllocatorV1.NotKeeper.selector, "keeper check not enforced");
+        // timelock: a raise of the cap is queued, cannot run early, and a non-delayed selector cannot be queued at all
+        bytes memory raise = abi.encodeCall(alloc.setDepositCap, (10_000e6));
+        alloc.propose(raise);
+        try alloc.execute(raise) { revert("timelock bypassed"); } catch (bytes memory err) { require(bytes4(err) == VertexAllocatorV1.TooEarly.selector, "wrong timelock error"); }
+        try alloc.propose(abi.encodeCall(alloc.pause, ())) { revert("non-delayed selector queued"); } catch (bytes memory err) { require(bytes4(err) == VertexAllocatorV1.NotDelayed.selector, "wrong propose error"); }
+        require(alloc.depositCap() == 5_000e6, "cap changed early");
         if (p.stopAfter == 2) return r;
 
         // 3. allocate through the real router
@@ -102,26 +111,30 @@ contract AllocatorScenario {
         r.valueOfTarget = alloc.valueOf(p.vault);
         r.idleAfterAllocate = alloc.idleAssets();
         r.totalAssetsAfterAllocate = alloc.totalAssets();
+        require(r.totalAssetsAfterAllocate * 10_000 >= r.idleAfterDeposit * (10_000 - alloc.maxLossBps()), "entry lost more than the limit");
+        try alloc.allocate(p.vault, p.entry) { revert("cooldown not enforced"); } catch (bytes memory err) { require(bytes4(err) == VertexAllocatorV1.Cooldown.selector, "wrong cooldown error"); }
         if (p.stopAfter == 3) return r;
 
         // 4. withdraw half in kind
         uint256 vsBefore = IManagedVault(p.vault).balanceOf(address(this));
-        r.withdrawIdleOut = alloc.withdraw(r.sharesMinted / 2, address(this));
+        address[] memory none;
+        r.withdrawIdleOut = alloc.withdraw(r.sharesMinted / 2, address(this), none);
         r.withdrawVaultSharesOut = IManagedVault(p.vault).balanceOf(address(this)) - vsBefore;
         if (p.stopAfter == 4) return r;
 
         // 5. bring the remaining position back to USDG
         uint256 remaining = IManagedVault(p.vault).balanceOf(a);
         (, uint256 a0, uint256 a1,,) = IManagedVault(p.vault).quote(remaining, 0);
-        (, , , address valuation) = alloc.targets(p.vault);
+        (, , , , address valuation,) = alloc.targets(p.vault);
         r.deallocateExpected = IValuation(valuation).value(a0, a1);
         uint256 stockValue = IValuation(valuation).value(p.stockIsToken0 ? a0 : 0, p.stockIsToken0 ? 0 : a1);
         uint256 minOut = (stockValue * (10_000 - p.swapLossBps) + 9_999) / 10_000;
         uint256 usdgOut = p.stockIsToken0 ? a1 : a0;
         r.deallocateMinimum = usdgOut + minOut;
-        if (r.deallocateMinimum * 10_000 < r.deallocateExpected * (10_000 - alloc.maxExitLossBps())) r.deallocateMinimum = (r.deallocateExpected * (10_000 - alloc.maxExitLossBps()) + 9_999) / 10_000;
+        if (r.deallocateMinimum * 10_000 < r.deallocateExpected * (10_000 - alloc.maxLossBps())) r.deallocateMinimum = (r.deallocateExpected * (10_000 - alloc.maxLossBps()) + 9_999) / 10_000;
         r.deallocatedOut = alloc.deallocate(p.vault, remaining, r.deallocateMinimum, p.deadline, p.configuration, IRouter.ExitSwap({minOut: minOut, sqrtLimit: p.exitSqrtLimit, route: ""}));
 
+        require(r.deallocatedOut >= r.deallocateMinimum, "exit below floor");
         r.totalAssetsEnd = alloc.totalAssets();
         r.supplyEnd = alloc.totalSupply();
         r.pricePerShareEnd = alloc.convertToAssets(1e12);

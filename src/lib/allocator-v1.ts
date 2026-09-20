@@ -29,7 +29,7 @@ export function allocatorV1Address(): Address | null {
 
 const same = (a: string, b: string) => a.toLowerCase() === b.toLowerCase();
 
-export type AllocatorTarget = { vault: Address; entry: ManagedVaultRegistryEntry; symbol: string; enabled: boolean; maxWeightBps: number; shares: bigint; value: bigint | null };
+export type AllocatorTarget = { vault: Address; entry: ManagedVaultRegistryEntry; symbol: string; enabled: boolean; writtenOff: boolean; maxWeightBps: number; shares: bigint; value: bigint | null };
 
 export type AllocatorV1State = {
   address: Address;
@@ -42,7 +42,7 @@ export type AllocatorV1State = {
   depositCap: bigint;
   depositFeeBps: number;
   minTargetAssets: bigint;
-  maxExitLossBps: number;
+  maxLossBps: number;
   totalSupply: bigint;
   idle: bigint;
   /** Null while any held target cannot be priced (stale reference): deposits are then refused by the contract. */
@@ -54,7 +54,7 @@ export type AllocatorV1State = {
 
 export async function readAllocatorV1(address: Address, pins: VaultPin[], client: PublicClient = publicClient()): Promise<AllocatorV1State> {
   const c = { address, abi: allocatorV1Abi } as const;
-  const [block, code, owner, keeper, guardian, treasury, paused, depositCap, depositFeeBps, minTargetAssets, maxExitLossBps, totalSupply, idle, count] = await Promise.all([
+  const [block, code, owner, keeper, guardian, treasury, paused, depositCap, depositFeeBps, minTargetAssets, maxLossBps, totalSupply, idle, count] = await Promise.all([
     client.getBlockNumber(),
     client.getCode({ address }),
     client.readContract({ ...c, functionName: "owner" }) as Promise<Address>,
@@ -65,7 +65,7 @@ export async function readAllocatorV1(address: Address, pins: VaultPin[], client
     client.readContract({ ...c, functionName: "depositCap" }) as Promise<bigint>,
     client.readContract({ ...c, functionName: "depositFeeBps" }) as Promise<number>,
     client.readContract({ ...c, functionName: "minTargetAssets" }) as Promise<bigint>,
-    client.readContract({ ...c, functionName: "maxExitLossBps" }) as Promise<number>,
+    client.readContract({ ...c, functionName: "maxLossBps" }) as Promise<number>,
     client.readContract({ ...c, functionName: "totalSupply" }) as Promise<bigint>,
     client.readContract({ ...c, functionName: "idleAssets" }) as Promise<bigint>,
     client.readContract({ ...c, functionName: "targetCount" }) as Promise<bigint>,
@@ -74,22 +74,22 @@ export async function readAllocatorV1(address: Address, pins: VaultPin[], client
   const targets: AllocatorTarget[] = await Promise.all(
     vaults.map(async (vault) => {
       const [cfg, shares] = await Promise.all([
-        client.readContract({ ...c, functionName: "targets", args: [vault] }) as Promise<readonly [boolean, number, Address, Address]>,
+        client.readContract({ ...c, functionName: "targets", args: [vault] }) as Promise<readonly [boolean, boolean, number, Address, Address, Address]>,
         client.readContract({ address: vault, abi: managedVaultAbi, functionName: "balanceOf", args: [address] }),
       ]);
-      const value = shares > 0n ? await (client.readContract({ ...c, functionName: "valueOf", args: [vault] }) as Promise<bigint>).catch(() => null) : 0n;
+      const value = shares > 0n && !cfg[1] ? await (client.readContract({ ...c, functionName: "valueOf", args: [vault] }) as Promise<bigint>).catch(() => null) : 0n;
       const entry = MANAGED_VAULTS.find((m) => same(m.vault, vault));
       const pin = pins.find((p) => same(p.vault, vault));
-      return { vault, entry: entry!, symbol: pin?.symbol ?? entry?.name ?? vault.slice(0, 8), enabled: cfg[0], maxWeightBps: Number(cfg[1]), shares, value };
+      return { vault, entry: entry!, symbol: pin?.symbol ?? entry?.name ?? vault.slice(0, 8), enabled: cfg[0], writtenOff: cfg[1], maxWeightBps: Number(cfg[2]), shares, value };
     }),
   );
   const totalAssets = targets.some((t) => t.value === null) ? null : targets.reduce((a, t) => a + (t.value ?? 0n), idle);
   const pricePerShare = totalAssets === null ? null : ((totalAssets + 1n) * 10n ** 12n) / (totalSupply + 10n ** 6n);
-  return { address, block, owner, keeper, guardian, treasury, paused, depositCap, depositFeeBps: Number(depositFeeBps), minTargetAssets, maxExitLossBps: Number(maxExitLossBps), totalSupply, idle, totalAssets, pricePerShare, targets, codeMatches: (code ?? "0x").toLowerCase() === allocatorV1Artifact.runtime.toLowerCase() };
+  return { address, block, owner, keeper, guardian, treasury, paused, depositCap, depositFeeBps: Number(depositFeeBps), minTargetAssets, maxLossBps: Number(maxLossBps), totalSupply, idle, totalAssets, pricePerShare, targets, codeMatches: (code ?? "0x").toLowerCase() === allocatorV1Artifact.runtime.toLowerCase() };
 }
 
 export const encodeAllocatorDeposit = (assets: bigint, receiver: Address) => encodeFunctionData({ abi: allocatorV1Abi, functionName: "deposit", args: [assets, receiver] });
-export const encodeAllocatorWithdraw = (shares: bigint, receiver: Address) => encodeFunctionData({ abi: allocatorV1Abi, functionName: "withdraw", args: [shares, receiver] });
+export const encodeAllocatorWithdraw = (shares: bigint, receiver: Address, skip: Address[] = []) => encodeFunctionData({ abi: allocatorV1Abi, functionName: "withdraw", args: [shares, receiver, skip] });
 
 /** Builds the router entry for the allocator (it holds the USDG, so the same quote builder applies) and the `allocate` calldata. */
 export async function buildAllocate(allocator: Address, entry: ManagedVaultRegistryEntry, budget: bigint, client: PublicClient = publicClient()) {
@@ -99,7 +99,7 @@ export async function buildAllocate(allocator: Address, entry: ManagedVaultRegis
 }
 
 /** Exit arguments for `deallocate`, built the way the vault page builds a USDG withdrawal, with the contract's loss floor applied. */
-export async function buildDeallocate(allocator: Address, entry: ManagedVaultRegistryEntry, shares: bigint, maxExitLossBps: number, client: PublicClient = publicClient()) {
+export async function buildDeallocate(allocator: Address, entry: ManagedVaultRegistryEntry, shares: bigint, maxLossBps: number, client: PublicClient = publicClient()) {
   const state = await readManagedState(entry, allocator, client);
   if (!state.quote || state.value === null) throw new Error("USDG exit needs a fresh reference. Wait for the feed to update.");
   const stockIsToken0 = !same(entry.asset, entry.token0);
@@ -111,7 +111,7 @@ export async function buildDeallocate(allocator: Address, entry: ManagedVaultReg
   const minOut = (stockValue * BigInt(10_000 - swapLoss) + 9_999n) / 10_000n;
   const usdgOut = stockIsToken0 ? a1 : a0;
   let minimum = usdgOut + minOut;
-  const floor = (expected * BigInt(10_000 - maxExitLossBps) + 9_999n) / 10_000n;
+  const floor = (expected * BigInt(10_000 - maxLossBps) + 9_999n) / 10_000n;
   if (minimum < floor) minimum = floor;
   const sqrtLimit = await swapSqrtLimit(entry, stockIsToken0, state.block, state.lossLimits?.slippageBps, client);
   const deadline = (await client.getBlock()).timestamp + 180n;

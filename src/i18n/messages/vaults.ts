@@ -148,7 +148,7 @@ export const vaults: NamespaceMessages = {
     "chart.imgAriaRange": ", LP range {lower} to {upper}",
     "chart.recorded": "Recorded pool price",
     "chart.dailyClose": "Daily close",
-    "chart.legendRange": "LP range {lower} – {upper}",
+    "chart.legendRange": "LP range {lower} to {upper}",
     "chart.unavailable": "Range data unavailable",
     "chart.noRange": "No active LP range",
 

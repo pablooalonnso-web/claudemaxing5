@@ -221,10 +221,10 @@ export function ManagedVaultActions({ pin, onState }: { pin: VaultPin; onState?:
           </div>
         )}
         <div className="tabs vault-action-tabs" role="tablist" aria-label={t("actions.tabsAria")}>
-          <button type="button" role="tab" disabled={busy} aria-selected={mode === "deposit"} aria-pressed={mode === "deposit"} className={mode === "deposit" ? "active" : ""} onClick={() => setMode("deposit")}>
+          <button type="button" role="tab" disabled={busy} aria-selected={mode === "deposit"} className={mode === "deposit" ? "active" : ""} onClick={() => setMode("deposit")}>
             {t("actions.deposit")}
           </button>
-          <button type="button" role="tab" disabled={busy} aria-selected={mode === "withdraw"} aria-pressed={mode === "withdraw"} className={mode === "withdraw" ? "active" : ""} onClick={() => setMode("withdraw")}>
+          <button type="button" role="tab" disabled={busy} aria-selected={mode === "withdraw"} className={mode === "withdraw" ? "active" : ""} onClick={() => setMode("withdraw")}>
             {t("actions.withdraw")}
           </button>
         </div>

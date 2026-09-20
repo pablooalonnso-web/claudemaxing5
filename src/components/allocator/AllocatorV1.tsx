@@ -191,7 +191,7 @@ export function AllocatorV1() {
     const target = state.targets.find((x) => x.vault.toLowerCase() === vault.toLowerCase());
     if (!target || target.shares === 0n) return;
     void guarded(async () => {
-      const { data, expected, minimum } = await buildDeallocate(address, target.entry, target.shares, state.maxExitLossBps);
+      const { data, expected, minimum } = await buildDeallocate(address, target.entry, target.shares, state.maxLossBps);
       await send(address, data, t("v1.keeper.confirmExit", { symbol: target.symbol, expected: fmtUsdg6(expected), floor: fmtUsdg6(minimum) }));
       setNote(t("v1.keeper.exited", { symbol: target.symbol }));
     });
@@ -335,7 +335,7 @@ export function AllocatorV1() {
                     <StockLogo symbol={x.symbol} size={36} />
                     <div className="basket-leg-main">
                       <b>{t("legs.vault", { symbol: x.symbol })}</b>
-                      <span>{x.enabled ? t("v1.targets.max", { pct: x.maxWeightBps / 100 }) : t("v1.targets.disabled")}</span>
+                      <span>{x.writtenOff ? t("v1.targets.writtenOff") : x.enabled ? t("v1.targets.max", { pct: x.maxWeightBps / 100 }) : t("v1.targets.disabled")}</span>
                     </div>
                     <div className="basket-leg-amount">
                       <b className="mono">{x.value === null ? "–" : `${fmtUsdg6(x.value)} USDG`}</b>
@@ -461,7 +461,8 @@ export function AllocatorV1() {
             <li>{t("v1.limits.weight")}</li>
             <li>{t("v1.limits.reference")}</li>
             <li>{t("v1.limits.minSize", { floor: state ? usd(Number(formatUnits(state.minTargetAssets, 6))) : "–" })}</li>
-            <li>{t("v1.limits.exitLoss", { pct: state ? state.maxExitLossBps / 100 : "–" })}</li>
+            <li>{t("v1.limits.exitLoss", { pct: state ? state.maxLossBps / 100 : "–" })}</li>
+            <li>{t("v1.limits.cooldown")}</li>
             <li>{t("v1.limits.cap")}</li>
             <li>{t("v1.limits.inKind")}</li>
             <li>{t("v1.limits.delay")}</li>
