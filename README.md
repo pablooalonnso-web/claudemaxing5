@@ -94,6 +94,24 @@ floor for the conservative and balanced profiles. `GET /api/allocator?amount=100
 JSON, and `npm run allocator -- --amount 1000 --risk balanced` runs the same model from the command line against the public
 data. It ranks, it does not forecast.
 
+## Allocator v1 (onchain)
+
+`contracts/VertexAllocatorV1.sol` is one vault that accepts USDG and allocates it across the whitelisted stock vaults
+through their existing routers, inside limits the contract enforces itself: only whitelisted targets, a maximum weight
+per vault, a minimum target size, a fresh Chainlink reference before any move (the target's valuation reverts when the
+feed is stale), a bounded loss on every exit to USDG, and a deposit cap that starts small. Withdrawals are in kind: a
+holder always receives the pro rata slice of idle USDG and of every vault position, so exits never need a price, a
+swap or the keeper. Every parameter change waits a 24 hour review window; pausing, disabling a target and lowering the
+cap apply at once. The deposit fee goes to the treasury the deployer sets.
+
+`npm run compile:allocator` compiles it with solc 0.8.24 into `src/data/allocator-v1.artifact.json` (ABI, creation and
+runtime bytecode, source hash). `npm run simulate:allocator -- --block <n> --vault PLTR --amount 1000` runs the
+end-to-end scenario in `contracts/test/AllocatorScenario.sol` inside a single `eth_call` at that block, with the
+scenario's code and a USDG balance injected through state overrides: deploy, deposit, the limits rejecting a bad move,
+an allocation through the real router, an in-kind withdrawal and an exit back to USDG. Nothing is signed or sent. The
+page `/allocator/v1` deploys the contract from the connected wallet (which becomes owner, keeper, guardian and treasury)
+and, once `src/data/allocator-v1.json` carries the address, shows deposits, withdrawals and the keeper console.
+
 ## Badges
 
 Live SVG badges, generated per request from chain reads and the latest verification run. Drop one anywhere an image works:
