@@ -12,8 +12,9 @@ pragma solidity 0.8.24;
  *   - a minimum size for a target vault before capital can go in;
  *   - a fresh Chainlink reference before any move (the valuation contract of
  *     the target reverts when the reference is stale, and so does this one);
- *   - a bounded loss on every move, into a vault and back out to USDG;
- *   - one allocation per vault per hour, so nobody can churn the fees;
+ *   - a bounded loss on every move, into a vault and back out to USDG, and a
+ *     budget for the realised loss of all moves in a rolling day;
+ *   - one move per vault per hour, in or out, so nobody can churn the fees;
  *   - a deposit cap that starts small and can only be raised after a delay.
  *
  * Nothing here depends on trust in the keeper. The keeper chooses when and
@@ -30,8 +31,9 @@ pragma solidity 0.8.24;
  *
  * Every parameter change goes through a 24 hour review window and expires a
  * week after it becomes executable, except the changes that only reduce risk
- * (pause, disable or write off a target, lower the cap or the fee), which
- * apply at once.
+ * (pause, disable a target, lower the cap or the fee), which apply at once.
+ * Resuming after a pause, and writing a dead target off, reprice or reopen the
+ * pool, so they wait the window like any other change.
  *
  * Shares: 12 decimals against USDG's 6, with a virtual offset so the first
  * depositor cannot manipulate the share price.
@@ -126,6 +128,7 @@ contract VertexAllocatorV1 {
     uint256 public constant MAX_TARGETS = 24;
     uint16 public constant MAX_FEE_BPS = 100; // 1%
     uint16 public constant MAX_LOSS_BPS = 500; // 5%
+    uint16 public constant MAX_DAILY_LOSS_BPS = 300; // 3% of the cap per day
     uint256 public constant MOVE_COOLDOWN = 1 hours;
     uint256 private constant VIRTUAL_SHARES = 1e6;
     uint256 private constant VIRTUAL_ASSETS = 1;
@@ -135,8 +138,13 @@ contract VertexAllocatorV1 {
     uint16 public depositFeeBps; // taken on the way in, sent to treasury
     uint256 public minTargetAssets; // a target vault must hold at least this much USDG of value
     uint16 public maxLossBps; // any move must keep at least (1 - this) of the value it moves, in or out
-    mapping(address => uint256) public lastAllocation; // vault → last allocate timestamp, against churn
+    uint16 public maxDailyLossBps; // realised loss from all moves in a rolling day, as a share of the deposit cap
+    uint256 public lossWindowStart;
+    uint256 public lossInWindow;
+    mapping(address => uint256) public lastMove; // vault → last allocate or deallocate timestamp, against churn
     mapping(bytes4 => bool) public delayed; // functions that only the review window may call
+    mapping(address => bool) public protectedToken; // USDG, every target's shares and stock, never sweepable
+    address[] public stockList; // unique stock tokens of every target ever whitelisted, for dust distribution
 
     struct Target {
         bool enabled;
@@ -163,6 +171,8 @@ contract VertexAllocatorV1 {
     event DepositFeeSet(uint16 bps);
     event MinTargetAssetsSet(uint256 assets);
     event MaxLossSet(uint16 bps);
+    event MaxDailyLossSet(uint16 bps);
+    event LossRecorded(uint256 loss, uint256 windowTotal);
     event TargetDropped(address indexed vault);
     event TargetWrittenOff(address indexed vault, bool writtenOff);
     event WithdrawnStock(address indexed receiver, address indexed token, uint256 amount);
@@ -199,6 +209,7 @@ contract VertexAllocatorV1 {
     error LengthMismatch();
     error TargetChanged();
     error Expired();
+    error DailyLossExceeded();
     error TooManyTargets();
     error FeeTooHigh();
     error LossTooHigh();
@@ -248,7 +259,12 @@ contract VertexAllocatorV1 {
         depositFeeBps = depositFeeBps_;
         minTargetAssets = 1_000e6;
         maxLossBps = 300;
+        maxDailyLossBps = 100;
+        protectedToken[usdg] = true;
         delayed[this.setTarget.selector] = true;
+        delayed[this.setMaxDailyLoss.selector] = true;
+        delayed[this.unpause.selector] = true;
+        delayed[this.writeOff.selector] = true;
         delayed[this.setDepositCap.selector] = true;
         delayed[this.setDepositFee.selector] = true;
         delayed[this.setMinTargetAssets.selector] = true;
@@ -344,6 +360,15 @@ contract VertexAllocatorV1 {
         return targetList.length;
     }
 
+    function stockCount() external view returns (uint256) {
+        return stockList.length;
+    }
+
+    /// Realised loss recorded in the current rolling day.
+    function dailyLoss() public view returns (uint256) {
+        return block.timestamp >= lossWindowStart + 1 days ? 0 : lossInWindow;
+    }
+
     /// Vault shares the allocator holds in one target.
     function positionOf(address vault) external view returns (uint256) {
         return IManagedVault(vault).balanceOf(address(this));
@@ -378,8 +403,8 @@ contract VertexAllocatorV1 {
         if (shares == 0) revert ZeroAmount();
         if (receiver == address(0)) revert ZeroAddress();
         uint256 supply = totalSupply;
+        if (balanceOf[msg.sender] < shares) revert InsufficientShares();
         idleOut = (idleAssets() * shares) / supply;
-        _burn(msg.sender, shares);
         uint256 n = targetList.length;
         for (uint256 i = 0; i < n; i++) {
             address vault = targetList[i];
@@ -389,14 +414,19 @@ contract VertexAllocatorV1 {
                 if (!IManagedVault(vault).transfer(receiver, part)) revert TransferFailed();
                 emit WithdrawnShares(receiver, vault, part);
             }
-            address stock = targets[vault].stock;
+        }
+        // Stock dust a router returned: each token once, best effort, so a token that refuses the receiver never blocks the exit.
+        n = stockList.length;
+        for (uint256 i = 0; i < n; i++) {
+            address stock = stockList[i];
             uint256 dust = (IERC20(stock).balanceOf(address(this)) * shares) / supply;
-            if (dust > 0) {
-                if (!IERC20(stock).transfer(receiver, dust)) revert TransferFailed();
-                emit WithdrawnStock(receiver, stock, dust);
-            }
+            if (dust == 0) continue;
+            try IERC20(stock).transfer(receiver, dust) returns (bool ok) {
+                if (ok) emit WithdrawnStock(receiver, stock, dust);
+            } catch {}
         }
         if (idleOut > 0 && !USDG.transfer(receiver, idleOut)) revert TransferFailed();
+        _burn(msg.sender, shares);
         emit Withdraw(msg.sender, receiver, shares, idleOut);
     }
 
@@ -419,22 +449,23 @@ contract VertexAllocatorV1 {
         IValuation(t.valuation).quote();
         (uint256 inv0, uint256 inv1) = v.inventory();
         if (IValuation(t.valuation).value(inv0, inv1) < minTargetAssets) revert TargetTooSmall();
-        if (block.timestamp < lastAllocation[vault] + MOVE_COOLDOWN) revert Cooldown();
+        if (block.timestamp < lastMove[vault] + MOVE_COOLDOWN) revert Cooldown();
         uint256 total = totalAssets();
         uint256 valueBefore = valueOf(vault);
         if ((valueBefore + entry.budget) * 10_000 > total * t.maxWeightBps) revert WeightExceeded();
 
         uint256 sharesBefore = v.balanceOf(address(this));
         uint256 idleBefore = idleAssets();
-        USDG.approve(t.router, entry.budget);
+        if (!USDG.approve(t.router, entry.budget)) revert TransferFailed();
         IRouter(t.router).deposit(entry);
-        USDG.approve(t.router, 0);
+        if (!USDG.approve(t.router, 0)) revert TransferFailed();
         vaultShares = v.balanceOf(address(this)) - sharesBefore;
         // The value that arrived in the vault must cover what left, minus the loss limit: a bad swap leg cannot drain the allocator.
         uint256 spent = idleBefore - idleAssets();
         uint256 gained = valueOf(vault) - valueBefore;
         if (gained * 10_000 < spent * (10_000 - maxLossBps)) revert EntryLossTooHigh();
-        lastAllocation[vault] = block.timestamp;
+        _recordLoss(gained < spent ? spent - gained : 0);
+        lastMove[vault] = block.timestamp;
         emit Allocated(vault, spent, vaultShares);
     }
 
@@ -443,6 +474,13 @@ contract VertexAllocatorV1 {
         Target memory t = targets[vault];
         if (t.router == address(0)) revert UnknownTarget();
         if (vaultShares == 0) revert ZeroAmount();
+        // While paused only the owner or the guardian unwinds, without waiting for the cooldown: an emergency exit is the
+        // one move that should never wait. Otherwise a compromised keeper cannot keep moving value.
+        if (paused) {
+            if (msg.sender != owner && msg.sender != guardian) revert IsPaused();
+        } else if (block.timestamp < lastMove[vault] + MOVE_COOLDOWN) {
+            revert Cooldown();
+        }
         IManagedVault v = IManagedVault(vault);
         if (v.router() != t.router || v.valuation() != t.valuation) revert TargetChanged();
         IValuation(t.valuation).quote();
@@ -450,12 +488,25 @@ contract VertexAllocatorV1 {
         uint256 expected = IValuation(t.valuation).value(amount0, amount1);
         if (minimum * 10_000 < expected * (10_000 - maxLossBps)) revert ExitFloorTooLow();
         uint256 before = idleAssets();
-        v.approve(t.router, vaultShares);
+        if (!v.approve(t.router, vaultShares)) revert TransferFailed();
         IRouter(t.router).withdrawUSDG(vaultShares, address(this), minimum, deadline, configuration, swap);
-        v.approve(t.router, 0);
+        if (!v.approve(t.router, 0)) revert TransferFailed();
         assetsOut = idleAssets() - before;
         if (assetsOut < minimum) revert LossTooHigh();
+        _recordLoss(assetsOut < expected ? expected - assetsOut : 0);
+        lastMove[vault] = block.timestamp;
         emit Deallocated(vault, vaultShares, assetsOut);
+    }
+
+    /// Adds a realised loss to the rolling day and reverts when the day's budget, a share of the deposit cap, is spent.
+    function _recordLoss(uint256 loss) internal {
+        if (block.timestamp >= lossWindowStart + 1 days) {
+            lossWindowStart = block.timestamp;
+            lossInWindow = 0;
+        }
+        lossInWindow += loss;
+        if (lossInWindow * 10_000 > depositCap * maxDailyLossBps) revert DailyLossExceeded();
+        emit LossRecorded(loss, lossInWindow);
     }
 
     // ------------------------------------------------------------------ immediate, risk-reducing controls
@@ -465,7 +516,8 @@ contract VertexAllocatorV1 {
         emit Paused(msg.sender);
     }
 
-    function unpause() external onlyOwner {
+    /// Resuming waits the review window, so a pause or a write-off cannot be followed by an immediate repricing.
+    function unpause() external onlySelf {
         paused = false;
         emit Unpaused(msg.sender);
     }
@@ -477,10 +529,11 @@ contract VertexAllocatorV1 {
         emit TargetDisabled(vault);
     }
 
-    /// Remove a target the allocator no longer holds, so a dead vault cannot keep deposits blocked through the valuation loop.
+    /// Remove a target the allocator no longer holds (or one already written off, whose residue stays behind at zero
+    /// value), so a dead vault does not sit in the list forever. Its stock token stays protected and distributable.
     function dropTarget(address vault) external onlyOwner {
         if (targets[vault].router == address(0)) revert UnknownTarget();
-        if (IManagedVault(vault).balanceOf(address(this)) != 0) revert StillHeld();
+        if (IManagedVault(vault).balanceOf(address(this)) != 0 && !targets[vault].writtenOff) revert StillHeld();
         delete targets[vault];
         uint256 n = targetList.length;
         for (uint256 i = 0; i < n; i++) {
@@ -493,13 +546,16 @@ contract VertexAllocatorV1 {
         emit TargetDropped(vault);
     }
 
-    /// Stop pricing a target that can no longer be priced, so it does not block deposits. Holders still receive its shares in kind.
-    function writeOff(address vault, bool writtenOff) external {
-        if (msg.sender != guardian && msg.sender != owner) revert NotGuardian();
+    /// Stop pricing a target that can no longer be priced, so it does not block deposits forever. Holders still receive
+    /// its shares in kind. It reprices the shares, so it waits the review window and pauses deposits until a separate,
+    /// also delayed, unpause: nobody can deposit into the repriced pool before everyone has seen it.
+    function writeOff(address vault, bool writtenOff) external onlySelf {
         if (targets[vault].router == address(0)) revert UnknownTarget();
         targets[vault].writtenOff = writtenOff;
         if (writtenOff) targets[vault].enabled = false;
+        paused = true;
         emit TargetWrittenOff(vault, writtenOff);
+        emit Paused(address(this));
     }
 
     function lowerDepositFee(uint16 bps) external onlyOwner {
@@ -516,9 +572,7 @@ contract VertexAllocatorV1 {
 
     /// Tokens that are neither USDG nor a target's shares (for example stock dust a router returned) go to the treasury.
     function sweep(address token) external onlyOwner {
-        if (token == address(USDG) || targets[token].router != address(0)) revert CoreToken();
-        uint256 n = targetList.length;
-        for (uint256 i = 0; i < n; i++) if (targets[targetList[i]].stock == token) revert CoreToken();
+        if (protectedToken[token]) revert CoreToken();
         uint256 amount = IERC20(token).balanceOf(address(this));
         if (amount == 0) revert ZeroAmount();
         if (!IERC20(token).transfer(treasury, amount)) revert TransferFailed();
@@ -553,22 +607,29 @@ contract VertexAllocatorV1 {
         emit Executed(hash);
     }
 
-    /// Whitelist a target vault, or update its maximum weight. Router and valuation are read from the vault itself.
-    function setTarget(address vault, uint16 maxWeightBps) external onlySelf {
-        _setTarget(vault, maxWeightBps);
+    /// Whitelist a target vault, or update its maximum weight. The router, valuation and stock token named in the
+    /// proposal must still be what the vault reports when the change executes, so the review window reviews the real wiring.
+    function setTarget(address vault, uint16 maxWeightBps, address router, address valuation, address stock) external onlySelf {
+        (address r, address v, address st) = _setTarget(vault, maxWeightBps);
+        if (r != router || v != valuation || st != stock) revert TargetChanged();
     }
 
-    function _setTarget(address vault, uint16 maxWeightBps) internal {
+    function _setTarget(address vault, uint16 maxWeightBps) internal returns (address router, address valuation, address stock) {
         if (maxWeightBps == 0 || maxWeightBps > 10_000) revert WeightExceeded();
-        address router = IManagedVault(vault).router();
-        address valuation = IManagedVault(vault).valuation();
+        router = IManagedVault(vault).router();
+        valuation = IManagedVault(vault).valuation();
         if (router == address(0) || valuation == address(0)) revert ZeroAddress();
         if (IRouter(router).asset() != address(USDG)) revert CoreToken();
-        address stock = IValuation(valuation).stock();
+        stock = IValuation(valuation).stock();
         if (stock == address(0) || stock == address(USDG)) revert ZeroAddress();
         if (targets[vault].router == address(0)) {
             if (targetList.length >= MAX_TARGETS) revert TooManyTargets();
             targetList.push(vault);
+            protectedToken[vault] = true;
+        }
+        if (!protectedToken[stock]) {
+            protectedToken[stock] = true;
+            stockList.push(stock);
         }
         targets[vault] = Target({enabled: true, writtenOff: false, maxWeightBps: maxWeightBps, router: router, valuation: valuation, stock: stock});
         emit TargetSet(vault, maxWeightBps, router, valuation);
@@ -594,6 +655,12 @@ contract VertexAllocatorV1 {
         if (bps > MAX_LOSS_BPS) revert LossTooHigh();
         maxLossBps = bps;
         emit MaxLossSet(bps);
+    }
+
+    function setMaxDailyLoss(uint16 bps) external onlySelf {
+        if (bps > MAX_DAILY_LOSS_BPS) revert LossTooHigh();
+        maxDailyLossBps = bps;
+        emit MaxDailyLossSet(bps);
     }
 
     function setTreasury(address treasury_) external onlySelf {

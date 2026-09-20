@@ -43,6 +43,8 @@ export type AllocatorV1State = {
   depositFeeBps: number;
   minTargetAssets: bigint;
   maxLossBps: number;
+  maxDailyLossBps: number;
+  dailyLoss: bigint;
   totalSupply: bigint;
   idle: bigint;
   /** Null while any held target cannot be priced (stale reference): deposits are then refused by the contract. */
@@ -54,7 +56,7 @@ export type AllocatorV1State = {
 
 export async function readAllocatorV1(address: Address, pins: VaultPin[], client: PublicClient = publicClient()): Promise<AllocatorV1State> {
   const c = { address, abi: allocatorV1Abi } as const;
-  const [block, code, owner, keeper, guardian, treasury, paused, depositCap, depositFeeBps, minTargetAssets, maxLossBps, totalSupply, idle, count] = await Promise.all([
+  const [block, code, owner, keeper, guardian, treasury, paused, depositCap, depositFeeBps, minTargetAssets, maxLossBps, maxDailyLossBps, dailyLoss, totalSupply, idle, count] = await Promise.all([
     client.getBlockNumber(),
     client.getCode({ address }),
     client.readContract({ ...c, functionName: "owner" }) as Promise<Address>,
@@ -66,6 +68,8 @@ export async function readAllocatorV1(address: Address, pins: VaultPin[], client
     client.readContract({ ...c, functionName: "depositFeeBps" }) as Promise<number>,
     client.readContract({ ...c, functionName: "minTargetAssets" }) as Promise<bigint>,
     client.readContract({ ...c, functionName: "maxLossBps" }) as Promise<number>,
+    client.readContract({ ...c, functionName: "maxDailyLossBps" }) as Promise<number>,
+    client.readContract({ ...c, functionName: "dailyLoss" }) as Promise<bigint>,
     client.readContract({ ...c, functionName: "totalSupply" }) as Promise<bigint>,
     client.readContract({ ...c, functionName: "idleAssets" }) as Promise<bigint>,
     client.readContract({ ...c, functionName: "targetCount" }) as Promise<bigint>,
@@ -85,7 +89,7 @@ export async function readAllocatorV1(address: Address, pins: VaultPin[], client
   );
   const totalAssets = targets.some((t) => t.value === null) ? null : targets.reduce((a, t) => a + (t.value ?? 0n), idle);
   const pricePerShare = totalAssets === null ? null : ((totalAssets + 1n) * 10n ** 12n) / (totalSupply + 10n ** 6n);
-  return { address, block, owner, keeper, guardian, treasury, paused, depositCap, depositFeeBps: Number(depositFeeBps), minTargetAssets, maxLossBps: Number(maxLossBps), totalSupply, idle, totalAssets, pricePerShare, targets, codeMatches: (code ?? "0x").toLowerCase() === allocatorV1Artifact.runtime.toLowerCase() };
+  return { address, block, owner, keeper, guardian, treasury, paused, depositCap, depositFeeBps: Number(depositFeeBps), minTargetAssets, maxLossBps: Number(maxLossBps), maxDailyLossBps: Number(maxDailyLossBps), dailyLoss, totalSupply, idle, totalAssets, pricePerShare, targets, codeMatches: (code ?? "0x").toLowerCase() === allocatorV1Artifact.runtime.toLowerCase() };
 }
 
 export const encodeAllocatorDeposit = (assets: bigint, receiver: Address) => encodeFunctionData({ abi: allocatorV1Abi, functionName: "deposit", args: [assets, receiver] });

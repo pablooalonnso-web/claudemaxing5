@@ -463,6 +463,8 @@ export function AllocatorV1() {
             <li>{t("v1.limits.minSize", { floor: state ? usd(Number(formatUnits(state.minTargetAssets, 6))) : "–" })}</li>
             <li>{t("v1.limits.exitLoss", { pct: state ? state.maxLossBps / 100 : "–" })}</li>
             <li>{t("v1.limits.cooldown")}</li>
+            <li>{t("v1.limits.daily", { pct: state ? state.maxDailyLossBps / 100 : "–", used: state ? fmtUsdg6(state.dailyLoss) : "–" })}</li>
+            <li>{t("v1.limits.resume")}</li>
             <li>{t("v1.limits.cap")}</li>
             <li>{t("v1.limits.inKind")}</li>
             <li>{t("v1.limits.delay")}</li>

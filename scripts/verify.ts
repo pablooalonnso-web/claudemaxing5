@@ -346,7 +346,7 @@ async function main() {
       return { status: ok ? "pass" : "fail", detail: ok ? `Matches the published artifact (solc ${allocatorV1Artifact.compiler.split("+")[0]}, source sha256 ${allocatorV1Artifact.sourceSha256.slice(0, 12)}…)` : "Deployed bytecode differs from src/data/allocator-v1.artifact.json" };
     });
     await check(al, "Roles and limits", async () => {
-      const [owner, keeper, guardian, treasury, paused, cap, fee, maxLoss, count] = await Promise.all([
+      const [owner, keeper, guardian, treasury, paused, cap, fee, maxLoss, maxDaily, count] = await Promise.all([
         client.readContract({ ...c, functionName: "owner" }) as Promise<Address>,
         client.readContract({ ...c, functionName: "keeper" }) as Promise<Address>,
         client.readContract({ ...c, functionName: "guardian" }) as Promise<Address>,
@@ -355,11 +355,12 @@ async function main() {
         client.readContract({ ...c, functionName: "depositCap" }) as Promise<bigint>,
         client.readContract({ ...c, functionName: "depositFeeBps" }) as Promise<number>,
         client.readContract({ ...c, functionName: "maxLossBps" }) as Promise<number>,
+        client.readContract({ ...c, functionName: "maxDailyLossBps" }) as Promise<number>,
         client.readContract({ ...c, functionName: "targetCount" }) as Promise<bigint>,
       ]);
       const zero = "0x0000000000000000000000000000000000000000";
       const ok = owner !== zero && treasury !== zero && Number(fee) <= 100 && Number(maxLoss) <= 500;
-      return { status: ok ? (paused ? "warn" : "pass") : "fail", detail: `owner ${owner.slice(0, 10)}…, keeper ${keeper.slice(0, 10)}…, guardian ${guardian.slice(0, 10)}…, treasury ${treasury.slice(0, 10)}…; cap ${formatUnits(cap, 6)} USDG, fee ${Number(fee) / 100}%, max loss ${Number(maxLoss) / 100}%, ${count} target(s)${paused ? ", PAUSED" : ""}` };
+      return { status: ok ? (paused ? "warn" : "pass") : "fail", detail: `owner ${owner.slice(0, 10)}…, keeper ${keeper.slice(0, 10)}…, guardian ${guardian.slice(0, 10)}…, treasury ${treasury.slice(0, 10)}…; cap ${formatUnits(cap, 6)} USDG, fee ${Number(fee) / 100}%, max loss ${Number(maxLoss) / 100}% per move and ${Number(maxDaily) / 100}% of the cap per day, ${count} target(s)${paused ? ", PAUSED" : ""}` };
     });
     await check(al, "Targets", async () => {
       const n = Number(await client.readContract({ ...c, functionName: "targetCount" }));

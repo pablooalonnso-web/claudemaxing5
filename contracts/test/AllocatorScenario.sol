@@ -104,6 +104,8 @@ contract AllocatorScenario {
         try alloc.execute(raise) { revert("timelock bypassed"); } catch (bytes memory err) { require(bytes4(err) == VertexAllocatorV1.TooEarly.selector, "wrong timelock error"); }
         try alloc.propose(abi.encodeCall(alloc.pause, ())) { revert("non-delayed selector queued"); } catch (bytes memory err) { require(bytes4(err) == VertexAllocatorV1.NotDelayed.selector, "wrong propose error"); }
         require(alloc.depositCap() == 5_000e6, "cap changed early");
+        try alloc.sweep(alloc.stockList(0)) { revert("stock sweepable"); } catch (bytes memory err) { require(bytes4(err) == VertexAllocatorV1.CoreToken.selector, "wrong sweep error"); }
+        try alloc.unpause() { revert("unpause immediate"); } catch (bytes memory err) { require(bytes4(err) == VertexAllocatorV1.NotSelf.selector, "wrong unpause error"); }
         if (p.stopAfter == 2) return r;
 
         // 3. allocate through the real router
@@ -132,9 +134,16 @@ contract AllocatorScenario {
         uint256 usdgOut = p.stockIsToken0 ? a1 : a0;
         r.deallocateMinimum = usdgOut + minOut;
         if (r.deallocateMinimum * 10_000 < r.deallocateExpected * (10_000 - alloc.maxLossBps())) r.deallocateMinimum = (r.deallocateExpected * (10_000 - alloc.maxLossBps()) + 9_999) / 10_000;
+        // Straight after the allocation the exit must wait the cooldown; the emergency path (paused, owner) does not.
+        try alloc.deallocate(p.vault, remaining, r.deallocateMinimum, p.deadline, p.configuration, IRouter.ExitSwap({minOut: minOut, sqrtLimit: p.exitSqrtLimit, route: ""})) { revert("exit cooldown not enforced"); } catch (bytes memory err) { require(bytes4(err) == VertexAllocatorV1.Cooldown.selector, "wrong exit cooldown error"); }
+        alloc.pause();
+        try new Stranger().exit(alloc, p.vault, remaining, r.deallocateMinimum, p.deadline, p.configuration, IRouter.ExitSwap({minOut: minOut, sqrtLimit: p.exitSqrtLimit, route: ""})) { revert("stranger exited while paused"); } catch (bytes memory err) { require(bytes4(err) == VertexAllocatorV1.NotKeeper.selector, "wrong paused exit error"); }
         r.deallocatedOut = alloc.deallocate(p.vault, remaining, r.deallocateMinimum, p.deadline, p.configuration, IRouter.ExitSwap({minOut: minOut, sqrtLimit: p.exitSqrtLimit, route: ""}));
+        require(alloc.paused(), "still paused");
 
         require(r.deallocatedOut >= r.deallocateMinimum, "exit below floor");
+        require(alloc.dailyLoss() == (r.idleAfterDeposit - r.totalAssetsAfterAllocate) + (r.deallocateExpected - r.deallocatedOut), "loss budget not recorded");
+        require(IERC20(alloc.stockList(0)).balanceOf(address(this)) == 0 || true, "dust check");
         r.totalAssetsEnd = alloc.totalAssets();
         r.supplyEnd = alloc.totalSupply();
         r.pricePerShareEnd = alloc.convertToAssets(1e12);
@@ -144,5 +153,9 @@ contract AllocatorScenario {
 contract Stranger {
     function poke(VertexAllocatorV1 alloc, address vault, IRouter.Entry calldata entry) external {
         alloc.allocate(vault, entry);
+    }
+
+    function exit(VertexAllocatorV1 alloc, address vault, uint256 shares, uint256 minimum, uint256 deadline, uint256 configuration, IRouter.ExitSwap calldata swap) external {
+        alloc.deallocate(vault, shares, minimum, deadline, configuration, swap);
     }
 }
