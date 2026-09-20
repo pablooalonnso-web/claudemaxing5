@@ -24,7 +24,7 @@ import { BURN_ADDRESS, robinhoodChain, TOKEN_ADDRESS, USDG_ADDRESS } from "@/lib
 import { buildDepositQuote, readManagedState, swapSqrtLimit } from "@/lib/managed-vault";
 import { LENDING_MARKETS, MANAGED_VAULTS, VAULT_PINS, type ManagedVaultRegistryEntry } from "@/lib/registry";
 import { getLendingMarkets, getLendingPosition } from "@/server/lending";
-import { ALLOCATOR_V1, allocatorV1Abi, allocatorV1Artifact } from "@/lib/allocator-v1";
+import { ALLOCATOR_V1, ALLOCATOR_V1_LAUNCH, allocatorV1Abi, allocatorV1Artifact } from "@/lib/allocator-v1";
 import { getStatus } from "@/server/status";
 import { kyberBuild, kyberRoute } from "@/server/trade";
 
@@ -346,7 +346,7 @@ async function main() {
       return { status: ok ? "pass" : "fail", detail: ok ? `Matches the published artifact (solc ${allocatorV1Artifact.compiler.split("+")[0]}, source sha256 ${allocatorV1Artifact.sourceSha256.slice(0, 12)}…)` : "Deployed bytecode differs from src/data/allocator-v1.artifact.json" };
     });
     await check(al, "Roles and limits", async () => {
-      const [owner, keeper, guardian, treasury, paused, cap, fee, maxLoss, maxDaily, count] = await Promise.all([
+      const [owner, keeper, guardian, treasury, paused, cap, fee, maxLoss, maxDaily, count, exitFee] = await Promise.all([
         client.readContract({ ...c, functionName: "owner" }) as Promise<Address>,
         client.readContract({ ...c, functionName: "keeper" }) as Promise<Address>,
         client.readContract({ ...c, functionName: "guardian" }) as Promise<Address>,
@@ -357,10 +357,11 @@ async function main() {
         client.readContract({ ...c, functionName: "maxLossBps" }) as Promise<number>,
         client.readContract({ ...c, functionName: "maxDailyLossBps" }) as Promise<number>,
         client.readContract({ ...c, functionName: "targetCount" }) as Promise<bigint>,
+        client.readContract({ ...c, functionName: "EXIT_FEE_BPS" }) as Promise<number>,
       ]);
       const zero = "0x0000000000000000000000000000000000000000";
-      const ok = owner !== zero && treasury !== zero && Number(fee) <= 100 && Number(maxLoss) <= 500;
-      return { status: ok ? (paused ? "warn" : "pass") : "fail", detail: `owner ${owner.slice(0, 10)}…, keeper ${keeper.slice(0, 10)}…, guardian ${guardian.slice(0, 10)}…, treasury ${treasury.slice(0, 10)}…; cap ${formatUnits(cap, 6)} USDG, fee ${Number(fee) / 100}%, max loss ${Number(maxLoss) / 100}% per move and ${Number(maxDaily) / 100}% of the cap per day, ${count} target(s)${paused ? ", PAUSED" : ""}` };
+      const ok = owner !== zero && treasury !== zero && Number(fee) <= 100 && Number(maxLoss) <= 500 && Number(exitFee) === ALLOCATOR_V1_LAUNCH.exitFeeBps;
+      return { status: ok ? (paused ? "warn" : "pass") : "fail", detail: `owner ${owner.slice(0, 10)}…, keeper ${keeper.slice(0, 10)}…, guardian ${guardian.slice(0, 10)}…, treasury ${treasury.slice(0, 10)}…; cap ${formatUnits(cap, 6)} USDG, fee ${Number(fee) / 100}% in and ${Number(exitFee) / 100}% out, max loss ${Number(maxLoss) / 100}% per move and ${Number(maxDaily) / 100}% of the cap or the pool per day, ${count} target(s)${paused ? ", PAUSED" : ""}` };
     });
     await check(al, "Targets", async () => {
       const n = Number(await client.readContract({ ...c, functionName: "targetCount" }));

@@ -13,7 +13,7 @@ export const allocatorV1Bytecode = artifact.bytecode as Hex;
 export const allocatorV1Artifact = { compiler: artifact.compiler, settings: artifact.settings, sourceSha256: artifact.sourceSha256, runtime: artifact.deployedBytecode as Hex };
 
 /** Launch parameters: small cap, 0.30% deposit fee, at most 35% in any one vault. */
-export const ALLOCATOR_V1_LAUNCH = { depositCap: 2_500_000_000n, depositFeeBps: 30, maxWeightBps: 3500, minTargetAssets: 1_000_000_000n } as const;
+export const ALLOCATOR_V1_LAUNCH = { depositCap: 2_500_000_000n, depositFeeBps: 30, exitFeeBps: 30, maxWeightBps: 3500, minTargetAssets: 1_000_000_000n } as const; // exitFeeBps mirrors the contract constant EXIT_FEE_BPS
 
 export type AllocatorV1Config = { chainId: number; address: string | null; deployedBlock: string | null; deployedTransaction: string | null };
 export const ALLOCATOR_V1: AllocatorV1Config = deployed as AllocatorV1Config;

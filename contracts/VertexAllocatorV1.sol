@@ -14,7 +14,8 @@ pragma solidity 0.8.24;
  *     the target reverts when the reference is stale, and so does this one);
  *   - a bounded loss on every move, into a vault and back out to USDG, and a
  *     budget for the realised loss of all moves per day (a day starts at the
- *     first lossy move after the previous day ended);
+ *     first lossy move after the previous day ended, and the budget is a
+ *     share of the smaller of the deposit cap and the pool);
  *   - one move per vault per hour, in or out, so nobody can churn the fees;
  *   - a deposit cap that starts small and can only be raised after a delay.
  *
@@ -136,6 +137,7 @@ contract VertexAllocatorV1 {
     uint16 public constant MAX_LOSS_BPS = 500; // 5%
     uint16 public constant MAX_DAILY_LOSS_BPS = 300; // 3% of the cap per day
     uint256 public constant MOVE_COOLDOWN = 1 hours;
+    uint16 public constant EXIT_FEE_BPS = 30; // kept in the pool for the remaining holders, so a deposit priced on a lagging reference cannot be round-tripped at their expense
     uint256 private constant VIRTUAL_SHARES = 1e6;
     uint256 private constant VIRTUAL_ASSETS = 1;
 
@@ -215,6 +217,7 @@ contract VertexAllocatorV1 {
     error BadBudget();
     error ExitFloorTooLow();
     error EntryLossTooHigh();
+    error DustTooHigh();
     error Cooldown();
     error NotDelayed();
     error StillHeld();
@@ -359,11 +362,17 @@ contract VertexAllocatorV1 {
         uint256 amount = _balance(stock);
         if (amount == 0) return 0;
         StockPricing memory sp = stockPricing[stock];
+        if (sp.valuation == address(0)) return 0; // no live pricing (the vault that introduced it was written off): counts as nothing
         return IValuation(sp.valuation).value(sp.isToken0 ? amount : 0, sp.isToken0 ? 0 : amount);
     }
 
     /// Idle USDG plus the value of every target position and of every stock dust balance. Reverts while any of them cannot be priced.
-    function totalAssets() public view returns (uint256 total) {
+    function totalAssets() public view returns (uint256) {
+        if (_lock != 1) revert Reentrancy(); // no price reads from inside a move, when idle USDG and shares are in flight
+        return _totalAssets();
+    }
+
+    function _totalAssets() internal view returns (uint256 total) {
         total = idleAssets();
         uint256 n = targetList.length;
         for (uint256 i = 0; i < n; i++) total += valueOf(targetList[i]);
@@ -421,7 +430,7 @@ contract VertexAllocatorV1 {
         if (receiver == address(0)) revert ZeroAddress();
         uint256 fee = (assets * depositFeeBps) / 10_000;
         uint256 net = assets - fee;
-        uint256 total = totalAssets();
+        uint256 total = _totalAssets();
         if (total + net > depositCap) revert CapExceeded();
         shares = (net * (totalSupply + VIRTUAL_SHARES)) / (total + VIRTUAL_ASSETS);
         if (shares == 0) revert ZeroAmount();
@@ -432,19 +441,21 @@ contract VertexAllocatorV1 {
     }
 
     /// Redeem shares in kind: the pro rata slice of idle USDG, of every target position and of any stock dust a router
-    /// returned. Never needs a price. `skip` lists targets whose share transfer the caller chooses to forfeit (for example a
-    /// vault that no longer allows transfers); that slice stays with the remaining holders instead of blocking the exit.
+    /// returned, less the exit fee, which stays in the pool for the remaining holders. Never needs a price. `skip` lists
+    /// targets whose share transfer the caller chooses to forfeit (for example a vault that no longer allows transfers);
+    /// that slice stays with the remaining holders instead of blocking the exit.
     function withdraw(uint256 shares, address receiver, address[] calldata skip) external nonReentrant returns (uint256 idleOut) {
         if (shares == 0) revert ZeroAmount();
         if (receiver == address(0)) revert ZeroAddress();
         uint256 supply = totalSupply;
-        idleOut = (idleAssets() * shares) / supply;
         _burn(msg.sender, shares);
+        uint256 paid = (shares * (10_000 - EXIT_FEE_BPS)) / 10_000; // the slice paid out; the fee's share of everything stays behind
+        idleOut = (idleAssets() * paid) / supply;
         uint256 n = targetList.length;
         for (uint256 i = 0; i < n; i++) {
             address vault = targetList[i];
             if (_listed(skip, vault)) continue;
-            uint256 part = (IManagedVault(vault).balanceOf(address(this)) * shares) / supply;
+            uint256 part = (IManagedVault(vault).balanceOf(address(this)) * paid) / supply;
             if (part > 0) {
                 if (!IManagedVault(vault).transfer(receiver, part)) revert TransferFailed();
                 emit WithdrawnShares(receiver, vault, part);
@@ -454,7 +465,7 @@ contract VertexAllocatorV1 {
         n = stockList.length;
         for (uint256 i = 0; i < n; i++) {
             address stock = stockList[i];
-            uint256 dust = (_balance(stock) * shares) / supply;
+            uint256 dust = (_balance(stock) * paid) / supply;
             if (dust > 0 && _tryTransfer(stock, receiver, dust)) emit WithdrawnStock(receiver, stock, dust);
         }
         if (idleOut > 0 && !USDG.transfer(receiver, idleOut)) revert TransferFailed();
@@ -472,6 +483,7 @@ contract VertexAllocatorV1 {
         Target memory t = targets[vault];
         _checkEntry(vault, t, entry);
         uint256 heldBefore = valueOf(vault) + dustValueOf(t.stock);
+        uint256 dustBefore = dustValueOf(t.stock);
         uint256 sharesBefore = IManagedVault(vault).balanceOf(address(this));
         uint256 idleBefore = idleAssets();
         if (!USDG.approve(t.router, entry.budget)) revert TransferFailed();
@@ -480,6 +492,8 @@ contract VertexAllocatorV1 {
         vaultShares = IManagedVault(vault).balanceOf(address(this)) - sharesBefore;
         // The value that arrived in the vault must cover what left, minus the loss limit: a bad swap leg cannot drain the allocator.
         uint256 spent = idleBefore - idleAssets();
+        // Stock the router hands back is capital the allocator cannot move again: it is bounded like a loss on every move.
+        if ((dustValueOf(t.stock) - dustBefore) * 10_000 > spent * maxLossBps) revert DustTooHigh();
         uint256 gained = valueOf(vault) + dustValueOf(t.stock) - heldBefore;
         if (gained * 10_000 < spent * (10_000 - maxLossBps)) revert EntryLossTooHigh();
         _recordLoss(gained < spent ? spent - gained : 0);
@@ -501,7 +515,7 @@ contract VertexAllocatorV1 {
         (uint256 inv0, uint256 inv1) = v.inventory();
         if (IValuation(t.valuation).value(inv0, inv1) < minTargetAssets) revert TargetTooSmall();
         if (block.timestamp < lastMove[vault] + MOVE_COOLDOWN) revert Cooldown();
-        if ((valueOf(vault) + entry.budget) * 10_000 > totalAssets() * t.maxWeightBps) revert WeightExceeded();
+        if ((valueOf(vault) + entry.budget) * 10_000 > _totalAssets() * t.maxWeightBps) revert WeightExceeded();
     }
 
     /// Bring a position back to USDG through the router's protected swap. The floor must respect the exit loss limit.
@@ -535,18 +549,23 @@ contract VertexAllocatorV1 {
 
     /// Adds a realised loss to the rolling day and reverts when the day's budget, a share of the deposit cap, is spent.
     function _recordLoss(uint256 loss) internal {
+        if (loss == 0) return;
         if (block.timestamp >= lossWindowStart + 1 days) {
             lossWindowStart = block.timestamp;
             lossInWindow = 0;
         }
         lossInWindow += loss;
-        if (lossInWindow * 10_000 > depositCap * maxDailyLossBps) revert DailyLossExceeded();
+        // The budget is a share of the cap or of the pool, whichever is smaller (shares track assets closely: 1e6 shares per USDG unit).
+        uint256 base = totalSupply / VIRTUAL_SHARES;
+        if (base > depositCap) base = depositCap;
+        if (lossInWindow * 10_000 > base * maxDailyLossBps) revert DailyLossExceeded();
         emit LossRecorded(loss, lossInWindow);
     }
 
     // ------------------------------------------------------------------ immediate, risk-reducing controls
     function pause() external {
         if (msg.sender != guardian && msg.sender != owner) revert NotGuardian();
+        if (paused) revert IsPaused(); // a pause in force cannot be re-issued to invalidate the queued resume
         paused = true;
         pauseEpoch++;
         emit Paused(msg.sender);
@@ -590,7 +609,13 @@ contract VertexAllocatorV1 {
     function writeOff(address vault, bool writtenOff) external onlySelf {
         if (targets[vault].router == address(0)) revert UnknownTarget();
         targets[vault].writtenOff = writtenOff;
-        if (writtenOff) targets[vault].enabled = false;
+        if (writtenOff) {
+            targets[vault].enabled = false;
+            // Dust of its stock priced through the dead valuation would keep totalAssets reverting: count it as nothing
+            // until a live pricing is set again through setStockPricing.
+            address stock = targets[vault].stock;
+            if (stockPricing[stock].valuation == targets[vault].valuation) delete stockPricing[stock];
+        }
         paused = true;
         pauseEpoch++;
         emit TargetWrittenOff(vault, writtenOff);
@@ -700,9 +725,14 @@ contract VertexAllocatorV1 {
         emit MaxLossSet(bps);
     }
 
-    /// Repoint how a stock token's dust is valued, for example when the vault that introduced it is gone.
+    /// Repoint how a stock token's dust is valued, for example when the vault that introduced it is gone. The zero
+    /// address stops valuing it (it still leaves in kind).
     function setStockPricing(address stock, address valuation) external onlySelf {
         if (!protectedToken[stock] || stock == address(USDG)) revert UnknownTarget();
+        if (valuation == address(0)) {
+            delete stockPricing[stock];
+            return;
+        }
         if (IValuation(valuation).stock() != stock) revert TargetChanged();
         stockPricing[stock] = StockPricing({valuation: valuation, isToken0: IPool(IValuation(valuation).pool()).token0() == stock});
     }

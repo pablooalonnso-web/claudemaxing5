@@ -99,11 +99,14 @@ data. It ranks, it does not forecast.
 `contracts/VertexAllocatorV1.sol` is one vault that accepts USDG and allocates it across the whitelisted stock vaults
 through their existing routers, inside limits the contract enforces itself: only whitelisted targets, a maximum weight
 per vault, a minimum target size, a fresh Chainlink reference before any move (the target's valuation reverts when the
-feed is stale), a bounded loss on every move in or out plus a daily loss budget, one move per vault per hour, and a deposit cap that starts small. Withdrawals are in kind: a
-holder always receives the pro rata slice of idle USDG, of every vault position and of any stock dust, so exits never
-need a price, a swap or the keeper, and a holder can forfeit the slice of a vault that blocks transfers instead of being
-stuck. Every parameter change waits a 24 hour review window; pausing, disabling a target and lowering the
-cap apply at once. The deposit fee goes to the treasury the deployer sets.
+feed is stale), a bounded loss on every move in or out (stock a router hands back counts against the same bound) plus a
+daily loss budget on the smaller of the cap and the pool, one move per vault per hour, and a deposit cap that starts
+small. Withdrawals are in kind: a holder always receives the pro rata slice of idle USDG, of every vault position and of
+any stock dust, so exits never need a price, a swap or the keeper, and a holder can forfeit the slice of a vault that
+blocks transfers instead of being stuck. A 0.30% exit fee stays in the pool for the remaining holders, so a deposit
+priced on a lagging reference cannot be round-tripped at their expense. Every parameter change waits a 24 hour review
+window; pausing, disabling a target and lowering the cap apply at once, and resuming after a pause names the pause it
+lifts. The deposit fee goes to the treasury the deployer sets.
 
 `npm run compile:allocator` compiles it with solc 0.8.24 into `src/data/allocator-v1.artifact.json` (ABI, creation and
 runtime bytecode, source hash). `npm run simulate:allocator -- --block <n> --vault PLTR --amount 1000` runs the

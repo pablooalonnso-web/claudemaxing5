@@ -133,6 +133,11 @@ contract AllocatorScenario {
         address[] memory none;
         r.withdrawIdleOut = alloc.withdraw(r.sharesMinted / 2, address(this), none);
         r.withdrawVaultSharesOut = IManagedVault(p.vault).balanceOf(address(this)) - vsBefore;
+        // the exit fee stays in the pool: the payout is the slice of (shares less the fee) over the supply before the burn
+        uint256 paid = ((r.sharesMinted / 2) * (10_000 - alloc.EXIT_FEE_BPS())) / 10_000;
+        if (!(r.withdrawIdleOut == (r.idleAfterAllocate * paid) / r.sharesMinted)) { r.note = "exit fee not retained"; return r; }
+        if (!(r.withdrawVaultSharesOut == (r.vaultSharesAfterAllocate * paid) / r.sharesMinted)) { r.note = "vault slice off"; return r; }
+        if (!(alloc.totalSupply() == r.sharesMinted - r.sharesMinted / 2)) { r.note = "burn off"; return r; }
         if (p.stopAfter == 4) return r;
 
         // 5. bring the remaining position back to USDG
@@ -149,6 +154,7 @@ contract AllocatorScenario {
         try alloc.deallocate(p.vault, remaining, r.deallocateMinimum, p.deadline, p.configuration, IRouter.ExitSwap({minOut: minOut, sqrtLimit: p.exitSqrtLimit, route: ""})) { { r.note = "exit cooldown not enforced"; return r; } } catch (bytes memory err) { if (!(bytes4(err) == VertexAllocatorV1.Cooldown.selector)) { r.note = "wrong exit cooldown error"; return r; } }
         alloc.pause();
         if (!(alloc.paused() && alloc.pauseEpoch() == 1)) { r.note = "pause not recorded"; return r; }
+        try alloc.pause() { { r.note = "double pause"; return r; } } catch (bytes memory err) { if (!(bytes4(err) == VertexAllocatorV1.IsPaused.selector)) { r.note = "wrong double pause error"; return r; } }
         // now a resume for this pause can be queued, and still waits the window
         bytes memory resume = abi.encodeCall(alloc.unpause, (alloc.pauseEpoch()));
         try alloc.propose(resume) {} catch { { r.note = "resume not queueable"; return r; } }

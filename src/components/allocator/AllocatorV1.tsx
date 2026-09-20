@@ -246,6 +246,7 @@ export function AllocatorV1() {
           <ul className="alloc-limits">
             <li>{t("v1.deploy.cap", { cap: fmtUsdg6(ALLOCATOR_V1_LAUNCH.depositCap) })}</li>
             <li>{t("v1.deploy.fee", { pct: (ALLOCATOR_V1_LAUNCH.depositFeeBps / 100).toFixed(2) })}</li>
+            <li>{t("v1.deploy.exitFee", { pct: (ALLOCATOR_V1_LAUNCH.exitFeeBps / 100).toFixed(2) })}</li>
             <li>{t("v1.deploy.weight", { pct: ALLOCATOR_V1_LAUNCH.maxWeightBps / 100 })}</li>
             <li>{t("v1.deploy.targets", { n: eligibleForLaunch.length, list: eligibleForLaunch.map((p) => p.symbol).join(", ") || "–", floor: usd(Number(formatUnits(ALLOCATOR_V1_LAUNCH.minTargetAssets, 6))) })}</li>
             <li>{t("v1.deploy.roles")}</li>
@@ -430,7 +431,7 @@ export function AllocatorV1() {
               ) : tab === "deposit" ? (
                 <p>{depositsPaused ? (state?.paused ? t("v1.act.pausedNote") : t("v1.act.waitingNote")) : overCap ? t("v1.act.overCap", { left: capLeft === null ? "–" : fmtUsdg6(capLeft) }) : overBalance ? t("foot.overBalance") : raw !== null && state ? t("v1.act.depositNote", { fee: fmtUsdg6((raw * BigInt(state.depositFeeBps)) / 10_000n), net: fmtUsdg6(raw - (raw * BigInt(state.depositFeeBps)) / 10_000n) }) : t("v1.act.depositIdle", { left: capLeft === null ? "–" : fmtUsdg6(capLeft) })}</p>
               ) : (
-                <p>{overBalance ? t("v1.act.overShares") : t("v1.act.withdrawNote")}</p>
+                <p>{overBalance ? t("v1.act.overShares") : t("v1.act.withdrawNote", { pct: (ALLOCATOR_V1_LAUNCH.exitFeeBps / 100).toFixed(2) })}</p>
               )}
             </div>
             {!wallet ? (
