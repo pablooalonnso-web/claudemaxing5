@@ -1,4 +1,6 @@
 import type { Metadata } from "next";
+import Link from "next/link";
+import { ArrowRight } from "lucide-react";
 import { Allocator } from "@/components/allocator/Allocator";
 import { SiteFooter } from "@/components/SiteFooter";
 import { SiteHeader } from "@/components/SiteHeader";
@@ -31,6 +33,11 @@ export default async function AllocatorPage() {
               </h1>
             </div>
             <p className="masthead-intro">{t("hero.intro")}</p>
+            <div className="masthead-aside">
+              <Link href="/allocator/v1" className="strategy-status strategy-status-live">
+                <i aria-hidden="true" /> {t("hero.v1")} <ArrowRight size={12} aria-hidden="true" />
+              </Link>
+            </div>
           </div>
         </div>
       </section>

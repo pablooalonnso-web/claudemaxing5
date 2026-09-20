@@ -7,8 +7,7 @@
  *   npm run simulate:allocator -- --block 66715782 --vault PLTR --amount 1000
  */
 import { readFileSync } from "node:fs";
-import { decodeErrorResult, decodeFunctionResult, encodeAbiParameters, encodeDeployData, encodeFunctionData, formatUnits, getContractAddress, keccak256, pad, parseUnits, toHex, type Address, type Hex, type PublicClient } from "viem";
-import { erc20Abi } from "@/lib/abis";
+import { decodeErrorResult, decodeFunctionResult, encodeAbiParameters, encodeDeployData, encodeFunctionData, formatUnits, getContractAddress, keccak256, pad, parseUnits, toHex, type Abi, type Address, type Hex, type PublicClient } from "viem";
 import { publicClient, USDG_ADDRESS } from "@/lib/chain";
 import { buildDepositQuote, readManagedState, swapSqrtLimit } from "@/lib/managed-vault";
 import { MANAGED_VAULTS, VAULT_PINS } from "@/lib/registry";
@@ -42,12 +41,12 @@ function compileScenario() {
     process.exit(1);
   }
   const s = out.contracts["test/AllocatorScenario.sol"].AllocatorScenario;
-  return { abi: s.abi as never, runtime: ("0x" + s.evm.deployedBytecode.object) as Hex };
+  return { abi: s.abi as Abi, runtime: ("0x" + s.evm.deployedBytecode.object) as Hex };
 }
 
 async function main() {
   const client = publicClient();
-  const artifact = JSON.parse(readFileSync("src/data/allocator-v1.artifact.json", "utf8")) as { abi: never; bytecode: Hex };
+  const artifact = JSON.parse(readFileSync("src/data/allocator-v1.artifact.json", "utf8")) as { abi: Abi; bytecode: Hex };
   const scenario = compileScenario();
   const pin = VAULT_PINS.find((p) => p.symbol === SYMBOL)!;
   const entry = MANAGED_VAULTS.find((m) => m.id === pin.id)!;
