@@ -24,6 +24,7 @@ import { BURN_ADDRESS, robinhoodChain, TOKEN_ADDRESS, USDG_ADDRESS } from "@/lib
 import { buildDepositQuote, readManagedState, swapSqrtLimit } from "@/lib/managed-vault";
 import { LENDING_MARKETS, MANAGED_VAULTS, VAULT_PINS, type ManagedVaultRegistryEntry } from "@/lib/registry";
 import { getLendingMarkets, getLendingPosition } from "@/server/lending";
+import { ALLOCATOR_V1, allocatorV1Abi, allocatorV1Artifact } from "@/lib/allocator-v1";
 import { getStatus } from "@/server/status";
 import { kyberBuild, kyberRoute } from "@/server/trade";
 
@@ -331,6 +332,52 @@ async function main() {
       return {
         detail: `${amount(shares, 18)} shares → tokens: ${amount(stockOut, stockDec)} ${stockSym} + ${formatUnits(usdgOut, 6)} USDG · USDG only: ${formatUnits(usdg.result, 6)} USDG (floor ${formatUnits(minimum, 6)}); with a 1% floor the token route returns ${amount(tokens.result[0], s.decimals[0])} ${s.symbols[0]} and ${amount(tokens.result[1], s.decimals[1])} ${s.symbols[1]}`,
       };
+    });
+  }
+
+  // -------------------------------------------------------------- allocator v1
+  const al = group("allocator", "Allocator v1", ALLOCATOR_V1.address ? `The onchain allocator at ${ALLOCATOR_V1.address}: bytecode, roles and limits.` : "Not deployed yet; skipped.");
+  if (ALLOCATOR_V1.address) {
+    const a = ALLOCATOR_V1.address as Address;
+    const c = { address: a, abi: allocatorV1Abi } as const;
+    await check(al, "Bytecode", async () => {
+      const code = (await client.getCode({ address: a })) ?? "0x";
+      const ok = code.toLowerCase() === allocatorV1Artifact.runtime.toLowerCase();
+      return { status: ok ? "pass" : "fail", detail: ok ? `Matches the published artifact (solc ${allocatorV1Artifact.compiler.split("+")[0]}, source sha256 ${allocatorV1Artifact.sourceSha256.slice(0, 12)}…)` : "Deployed bytecode differs from src/data/allocator-v1.artifact.json" };
+    });
+    await check(al, "Roles and limits", async () => {
+      const [owner, keeper, guardian, treasury, paused, cap, fee, maxLoss, count] = await Promise.all([
+        client.readContract({ ...c, functionName: "owner" }) as Promise<Address>,
+        client.readContract({ ...c, functionName: "keeper" }) as Promise<Address>,
+        client.readContract({ ...c, functionName: "guardian" }) as Promise<Address>,
+        client.readContract({ ...c, functionName: "treasury" }) as Promise<Address>,
+        client.readContract({ ...c, functionName: "paused" }) as Promise<boolean>,
+        client.readContract({ ...c, functionName: "depositCap" }) as Promise<bigint>,
+        client.readContract({ ...c, functionName: "depositFeeBps" }) as Promise<number>,
+        client.readContract({ ...c, functionName: "maxLossBps" }) as Promise<number>,
+        client.readContract({ ...c, functionName: "targetCount" }) as Promise<bigint>,
+      ]);
+      const zero = "0x0000000000000000000000000000000000000000";
+      const ok = owner !== zero && treasury !== zero && Number(fee) <= 100 && Number(maxLoss) <= 500;
+      return { status: ok ? (paused ? "warn" : "pass") : "fail", detail: `owner ${owner.slice(0, 10)}…, keeper ${keeper.slice(0, 10)}…, guardian ${guardian.slice(0, 10)}…, treasury ${treasury.slice(0, 10)}…; cap ${formatUnits(cap, 6)} USDG, fee ${Number(fee) / 100}%, max loss ${Number(maxLoss) / 100}%, ${count} target(s)${paused ? ", PAUSED" : ""}` };
+    });
+    await check(al, "Targets", async () => {
+      const n = Number(await client.readContract({ ...c, functionName: "targetCount" }));
+      const rows: string[] = [];
+      let bad = 0;
+      for (let i = 0; i < n; i++) {
+        const vault = (await client.readContract({ ...c, functionName: "targetList", args: [BigInt(i)] })) as Address;
+        const cfg = (await client.readContract({ ...c, functionName: "targets", args: [vault] })) as readonly [boolean, boolean, number, Address, Address, Address];
+        const pin = VAULT_PINS.find((p) => same(p.vault, vault));
+        const [router, valuation] = await Promise.all([
+          client.readContract({ address: vault, abi: managedVaultAbi, functionName: "router" }),
+          client.readContract({ address: vault, abi: managedVaultAbi, functionName: "valuation" }),
+        ]);
+        const wired = same(router, cfg[3]) && same(valuation, cfg[4]);
+        if (!pin || !wired || Number(cfg[2]) > 5000) bad++;
+        rows.push(`${pin?.symbol ?? vault.slice(0, 8)} ${Number(cfg[2]) / 100}%${cfg[0] ? "" : " disabled"}${cfg[1] ? " written off" : ""}${wired ? "" : " WIRING CHANGED"}`);
+      }
+      return { status: bad ? "fail" : "pass", detail: `${n} target(s): ${rows.join(", ")}` };
     });
   }
 
