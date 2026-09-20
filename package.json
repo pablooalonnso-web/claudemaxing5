@@ -11,7 +11,9 @@
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
     "verify": "tsx --tsconfig tsconfig.json scripts/verify.ts",
-    "allocator": "tsx --tsconfig tsconfig.json scripts/allocator.ts"
+    "allocator": "tsx --tsconfig tsconfig.json scripts/allocator.ts",
+    "compile:allocator": "tsx --tsconfig tsconfig.json scripts/compile-allocator.ts",
+    "simulate:allocator": "tsx --tsconfig tsconfig.json scripts/simulate-allocator.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.126.0",
@@ -28,6 +30,7 @@
     "@types/react-dom": "^19.1.0",
     "eslint": "^9.28.0",
     "eslint-config-next": "15.5.25",
+    "solc": "^0.8.24",
     "tsx": "^4.23.13",
     "typescript": "^5.8.3"
   },
