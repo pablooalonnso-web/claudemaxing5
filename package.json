@@ -13,7 +13,8 @@
     "verify": "tsx --tsconfig tsconfig.json scripts/verify.ts",
     "allocator": "tsx --tsconfig tsconfig.json scripts/allocator.ts",
     "compile:allocator": "tsx --tsconfig tsconfig.json scripts/compile-allocator.ts",
-    "simulate:allocator": "tsx --tsconfig tsconfig.json scripts/simulate-allocator.ts"
+    "simulate:allocator": "tsx --tsconfig tsconfig.json scripts/simulate-allocator.ts",
+    "deploy:allocator": "tsx --tsconfig tsconfig.json scripts/deploy-allocator.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.126.0",

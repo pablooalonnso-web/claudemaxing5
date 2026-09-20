@@ -283,8 +283,8 @@ export function LendingMarketWorkspace({ pin, initial }: { pin: LendingMarketPin
           </div>
         </div>
       </section>
-      <nav className="ln-role-switch" aria-label={t("ws.role.aria")}>
-        <button type="button" aria-selected={role === "earn"} onClick={() => setRole("earn")}>
+      <nav className="ln-role-switch" role="tablist" aria-label={t("ws.role.aria")}>
+        <button type="button" role="tab" aria-selected={role === "earn"} onClick={() => setRole("earn")}>
           <span className="ln-role-icon" aria-hidden="true">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
               <ellipse cx="9" cy="7" rx="6" ry="2.6" />
@@ -296,7 +296,7 @@ export function LendingMarketWorkspace({ pin, initial }: { pin: LendingMarketPin
           <strong>{t("ws.role.earn")}</strong>
           <span>{t("ws.role.earnDesc")}</span>
         </button>
-        <button type="button" aria-selected={role === "borrow"} onClick={() => setRole("borrow")}>
+        <button type="button" role="tab" aria-selected={role === "borrow"} onClick={() => setRole("borrow")}>
           <span className="ln-role-icon" aria-hidden="true">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
               <rect x="4" y="10" width="16" height="11" rx="2.5" />
