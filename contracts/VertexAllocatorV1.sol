@@ -13,7 +13,8 @@ pragma solidity 0.8.24;
  *   - a fresh Chainlink reference before any move (the valuation contract of
  *     the target reverts when the reference is stale, and so does this one);
  *   - a bounded loss on every move, into a vault and back out to USDG, and a
- *     budget for the realised loss of all moves in a rolling day;
+ *     budget for the realised loss of all moves per day (a day starts at the
+ *     first lossy move after the previous day ended);
  *   - one move per vault per hour, in or out, so nobody can churn the fees;
  *   - a deposit cap that starts small and can only be raised after a delay.
  *
@@ -24,10 +25,10 @@ pragma solidity 0.8.24;
  * everything the allocator holds (idle USDG, shares of every target vault and
  * any stock dust a router returned), so exits never depend on a price, a swap
  * or the keeper. A holder may forfeit the slice of a vault whose shares can no
- * longer be transferred instead of being blocked by it. Anyone can then exit
- * the vault shares through the normal vault flow. Stock dust is not counted in
- * totalAssets, which errs on the side of existing holders being under, not
- * over, valued by at most the loss limit of one move.
+ * longer be transferred instead of being blocked by it, and a stock token that
+ * refuses a transfer is skipped rather than blocking the exit. Anyone can then
+ * exit the vault shares through the normal vault flow. Stock dust is valued in
+ * totalAssets through the valuation of the vault that introduced it.
  *
  * Every parameter change goes through a 24 hour review window and expires a
  * week after it becomes executable, except the changes that only reduce risk
@@ -68,6 +69,11 @@ interface IValuation {
     /// Reverts while the Chainlink reference is stale.
     function value(uint256 amount0, uint256 amount1) external view returns (uint256);
     function stock() external view returns (address);
+    function pool() external view returns (address);
+}
+
+interface IPool {
+    function token0() external view returns (address);
 }
 
 interface IRouter {
@@ -145,6 +151,12 @@ contract VertexAllocatorV1 {
     mapping(bytes4 => bool) public delayed; // functions that only the review window may call
     mapping(address => bool) public protectedToken; // USDG, every target's shares and stock, never sweepable
     address[] public stockList; // unique stock tokens of every target ever whitelisted, for dust distribution
+    struct StockPricing {
+        address valuation;
+        bool isToken0;
+    }
+    mapping(address => StockPricing) public stockPricing; // stock token → how to value dust of it in USDG
+    uint256 public pauseEpoch; // bumps on every pause; an unpause names the pause it lifts
 
     struct Target {
         bool enabled;
@@ -261,18 +273,19 @@ contract VertexAllocatorV1 {
         maxLossBps = 300;
         maxDailyLossBps = 100;
         protectedToken[usdg] = true;
-        delayed[this.setTarget.selector] = true;
-        delayed[this.setMaxDailyLoss.selector] = true;
-        delayed[this.unpause.selector] = true;
-        delayed[this.writeOff.selector] = true;
-        delayed[this.setDepositCap.selector] = true;
-        delayed[this.setDepositFee.selector] = true;
-        delayed[this.setMinTargetAssets.selector] = true;
-        delayed[this.setMaxLoss.selector] = true;
-        delayed[this.setTreasury.selector] = true;
-        delayed[this.setKeeper.selector] = true;
-        delayed[this.setGuardian.selector] = true;
-        delayed[this.transferOwnership.selector] = true;
+        delayed[VertexAllocatorV1.setTarget.selector] = true;
+        delayed[VertexAllocatorV1.setMaxDailyLoss.selector] = true;
+        delayed[VertexAllocatorV1.unpause.selector] = true;
+        delayed[VertexAllocatorV1.setStockPricing.selector] = true;
+        delayed[VertexAllocatorV1.writeOff.selector] = true;
+        delayed[VertexAllocatorV1.setDepositCap.selector] = true;
+        delayed[VertexAllocatorV1.setDepositFee.selector] = true;
+        delayed[VertexAllocatorV1.setMinTargetAssets.selector] = true;
+        delayed[VertexAllocatorV1.setMaxLoss.selector] = true;
+        delayed[VertexAllocatorV1.setTreasury.selector] = true;
+        delayed[VertexAllocatorV1.setKeeper.selector] = true;
+        delayed[VertexAllocatorV1.setGuardian.selector] = true;
+        delayed[VertexAllocatorV1.transferOwnership.selector] = true;
         emit OwnershipTransferred(address(0), owner_);
         emit KeeperSet(keeper);
         emit GuardianSet(guardian);
@@ -341,11 +354,33 @@ contract VertexAllocatorV1 {
         return IValuation(targets[vault].valuation).value(amount0, amount1);
     }
 
-    /// Idle USDG plus the value of every target position. Reverts while any held target cannot be priced.
+    /// USDG value of the stock dust of one token, priced through the valuation of the vault that introduced it.
+    function dustValueOf(address stock) public view returns (uint256) {
+        uint256 amount = _balance(stock);
+        if (amount == 0) return 0;
+        StockPricing memory sp = stockPricing[stock];
+        return IValuation(sp.valuation).value(sp.isToken0 ? amount : 0, sp.isToken0 ? 0 : amount);
+    }
+
+    /// Idle USDG plus the value of every target position and of every stock dust balance. Reverts while any of them cannot be priced.
     function totalAssets() public view returns (uint256 total) {
         total = idleAssets();
         uint256 n = targetList.length;
         for (uint256 i = 0; i < n; i++) total += valueOf(targetList[i]);
+        n = stockList.length;
+        for (uint256 i = 0; i < n; i++) total += dustValueOf(stockList[i]);
+    }
+
+    /// Balance read that never reverts: a frozen token reads as zero instead of blocking every holder.
+    function _balance(address token) internal view returns (uint256) {
+        (bool ok, bytes memory data) = token.staticcall(abi.encodeWithSelector(IERC20.balanceOf.selector, address(this)));
+        return ok && data.length >= 32 ? abi.decode(data, (uint256)) : 0;
+    }
+
+    /// Transfer that reports failure instead of reverting, for tokens that may freeze or return nothing.
+    function _tryTransfer(address token, address to, uint256 amount) internal returns (bool) {
+        (bool ok, bytes memory data) = token.call(abi.encodeWithSelector(IERC20.transfer.selector, to, amount));
+        return ok && (data.length == 0 || (data.length >= 32 && abi.decode(data, (bool))));
     }
 
     function convertToShares(uint256 assets) public view returns (uint256) {
@@ -403,8 +438,8 @@ contract VertexAllocatorV1 {
         if (shares == 0) revert ZeroAmount();
         if (receiver == address(0)) revert ZeroAddress();
         uint256 supply = totalSupply;
-        if (balanceOf[msg.sender] < shares) revert InsufficientShares();
         idleOut = (idleAssets() * shares) / supply;
+        _burn(msg.sender, shares);
         uint256 n = targetList.length;
         for (uint256 i = 0; i < n; i++) {
             address vault = targetList[i];
@@ -419,14 +454,10 @@ contract VertexAllocatorV1 {
         n = stockList.length;
         for (uint256 i = 0; i < n; i++) {
             address stock = stockList[i];
-            uint256 dust = (IERC20(stock).balanceOf(address(this)) * shares) / supply;
-            if (dust == 0) continue;
-            try IERC20(stock).transfer(receiver, dust) returns (bool ok) {
-                if (ok) emit WithdrawnStock(receiver, stock, dust);
-            } catch {}
+            uint256 dust = (_balance(stock) * shares) / supply;
+            if (dust > 0 && _tryTransfer(stock, receiver, dust)) emit WithdrawnStock(receiver, stock, dust);
         }
         if (idleOut > 0 && !USDG.transfer(receiver, idleOut)) revert TransferFailed();
-        _burn(msg.sender, shares);
         emit Withdraw(msg.sender, receiver, shares, idleOut);
     }
 
@@ -439,6 +470,26 @@ contract VertexAllocatorV1 {
     /// Move idle USDG into a target vault through its router. The entry is built off chain the way the vault page builds it.
     function allocate(address vault, IRouter.Entry calldata entry) external nonReentrant whenNotPaused onlyKeeper returns (uint256 vaultShares) {
         Target memory t = targets[vault];
+        _checkEntry(vault, t, entry);
+        uint256 heldBefore = valueOf(vault) + dustValueOf(t.stock);
+        uint256 sharesBefore = IManagedVault(vault).balanceOf(address(this));
+        uint256 idleBefore = idleAssets();
+        if (!USDG.approve(t.router, entry.budget)) revert TransferFailed();
+        IRouter(t.router).deposit(entry);
+        if (!USDG.approve(t.router, 0)) revert TransferFailed();
+        vaultShares = IManagedVault(vault).balanceOf(address(this)) - sharesBefore;
+        // The value that arrived in the vault must cover what left, minus the loss limit: a bad swap leg cannot drain the allocator.
+        uint256 spent = idleBefore - idleAssets();
+        uint256 gained = valueOf(vault) + dustValueOf(t.stock) - heldBefore;
+        if (gained * 10_000 < spent * (10_000 - maxLossBps)) revert EntryLossTooHigh();
+        _recordLoss(gained < spent ? spent - gained : 0);
+        lastMove[vault] = block.timestamp;
+        emit Allocated(vault, spent, vaultShares);
+    }
+
+    /// Every condition an entry must meet before any USDG leaves: target enabled and unchanged, vault open, reference
+    /// fresh, vault large enough, cooldown elapsed, weight limit respected after the move.
+    function _checkEntry(address vault, Target memory t, IRouter.Entry calldata entry) internal view {
         if (!t.enabled) revert UnknownTarget();
         if (entry.join.receiver != address(this)) revert BadReceiver();
         if (entry.budget == 0 || entry.budget > idleAssets()) revert BadBudget();
@@ -450,29 +501,13 @@ contract VertexAllocatorV1 {
         (uint256 inv0, uint256 inv1) = v.inventory();
         if (IValuation(t.valuation).value(inv0, inv1) < minTargetAssets) revert TargetTooSmall();
         if (block.timestamp < lastMove[vault] + MOVE_COOLDOWN) revert Cooldown();
-        uint256 total = totalAssets();
-        uint256 valueBefore = valueOf(vault);
-        if ((valueBefore + entry.budget) * 10_000 > total * t.maxWeightBps) revert WeightExceeded();
-
-        uint256 sharesBefore = v.balanceOf(address(this));
-        uint256 idleBefore = idleAssets();
-        if (!USDG.approve(t.router, entry.budget)) revert TransferFailed();
-        IRouter(t.router).deposit(entry);
-        if (!USDG.approve(t.router, 0)) revert TransferFailed();
-        vaultShares = v.balanceOf(address(this)) - sharesBefore;
-        // The value that arrived in the vault must cover what left, minus the loss limit: a bad swap leg cannot drain the allocator.
-        uint256 spent = idleBefore - idleAssets();
-        uint256 gained = valueOf(vault) - valueBefore;
-        if (gained * 10_000 < spent * (10_000 - maxLossBps)) revert EntryLossTooHigh();
-        _recordLoss(gained < spent ? spent - gained : 0);
-        lastMove[vault] = block.timestamp;
-        emit Allocated(vault, spent, vaultShares);
+        if ((valueOf(vault) + entry.budget) * 10_000 > totalAssets() * t.maxWeightBps) revert WeightExceeded();
     }
 
     /// Bring a position back to USDG through the router's protected swap. The floor must respect the exit loss limit.
     function deallocate(address vault, uint256 vaultShares, uint256 minimum, uint256 deadline, uint256 configuration, IRouter.ExitSwap calldata swap) external nonReentrant onlyKeeper returns (uint256 assetsOut) {
         Target memory t = targets[vault];
-        if (t.router == address(0)) revert UnknownTarget();
+        if (t.router == address(0) || t.writtenOff) revert UnknownTarget();
         if (vaultShares == 0) revert ZeroAmount();
         // While paused only the owner or the guardian unwinds, without waiting for the cooldown: an emergency exit is the
         // one move that should never wait. Otherwise a compromised keeper cannot keep moving value.
@@ -493,7 +528,7 @@ contract VertexAllocatorV1 {
         if (!v.approve(t.router, 0)) revert TransferFailed();
         assetsOut = idleAssets() - before;
         if (assetsOut < minimum) revert LossTooHigh();
-        _recordLoss(assetsOut < expected ? expected - assetsOut : 0);
+        if (!paused) _recordLoss(assetsOut < expected ? expected - assetsOut : 0);
         lastMove[vault] = block.timestamp;
         emit Deallocated(vault, vaultShares, assetsOut);
     }
@@ -513,11 +548,14 @@ contract VertexAllocatorV1 {
     function pause() external {
         if (msg.sender != guardian && msg.sender != owner) revert NotGuardian();
         paused = true;
+        pauseEpoch++;
         emit Paused(msg.sender);
     }
 
-    /// Resuming waits the review window, so a pause or a write-off cannot be followed by an immediate repricing.
-    function unpause() external onlySelf {
+    /// Resuming waits the review window and names the pause it lifts, so it cannot be queued before that pause exists:
+    /// a pause or a write-off is always followed by at least a full window before anyone can deposit again.
+    function unpause(uint256 epoch) external onlySelf {
+        if (epoch != pauseEpoch) revert NotQueued();
         paused = false;
         emit Unpaused(msg.sender);
     }
@@ -529,11 +567,11 @@ contract VertexAllocatorV1 {
         emit TargetDisabled(vault);
     }
 
-    /// Remove a target the allocator no longer holds (or one already written off, whose residue stays behind at zero
-    /// value), so a dead vault does not sit in the list forever. Its stock token stays protected and distributable.
+    /// Remove a target the allocator holds nothing of, so a dead vault does not sit in the list forever. A residue, even
+    /// a written-off one, keeps its slot: holders still receive it in kind. Its stock token stays protected and distributable.
     function dropTarget(address vault) external onlyOwner {
         if (targets[vault].router == address(0)) revert UnknownTarget();
-        if (IManagedVault(vault).balanceOf(address(this)) != 0 && !targets[vault].writtenOff) revert StillHeld();
+        if (IManagedVault(vault).balanceOf(address(this)) != 0) revert StillHeld();
         delete targets[vault];
         uint256 n = targetList.length;
         for (uint256 i = 0; i < n; i++) {
@@ -554,6 +592,7 @@ contract VertexAllocatorV1 {
         targets[vault].writtenOff = writtenOff;
         if (writtenOff) targets[vault].enabled = false;
         paused = true;
+        pauseEpoch++;
         emit TargetWrittenOff(vault, writtenOff);
         emit Paused(address(this));
     }
@@ -582,6 +621,8 @@ contract VertexAllocatorV1 {
     // ------------------------------------------------------------------ delayed changes (24 hour review window)
     function propose(bytes calldata data) external onlyOwner returns (bytes32 hash) {
         if (data.length < 4 || !delayed[bytes4(data[:4])]) revert NotDelayed();
+        // A resume can only be queued for the pause in force, never ahead of one, so every pause costs a full window.
+        if (bytes4(data[:4]) == VertexAllocatorV1.unpause.selector && (!paused || data.length != 36 || abi.decode(data[4:], (uint256)) != pauseEpoch)) revert NotQueued();
         hash = keccak256(data);
         eta[hash] = block.timestamp + DELAY;
         emit Proposed(hash, data, eta[hash]);
@@ -616,6 +657,7 @@ contract VertexAllocatorV1 {
 
     function _setTarget(address vault, uint16 maxWeightBps) internal returns (address router, address valuation, address stock) {
         if (maxWeightBps == 0 || maxWeightBps > 10_000) revert WeightExceeded();
+        if (targets[vault].writtenOff) revert StillHeld(); // recover through writeOff(vault, false) first, which pauses
         router = IManagedVault(vault).router();
         valuation = IManagedVault(vault).valuation();
         if (router == address(0) || valuation == address(0)) revert ZeroAddress();
@@ -630,6 +672,7 @@ contract VertexAllocatorV1 {
         if (!protectedToken[stock]) {
             protectedToken[stock] = true;
             stockList.push(stock);
+            stockPricing[stock] = StockPricing({valuation: valuation, isToken0: IPool(IValuation(valuation).pool()).token0() == stock});
         }
         targets[vault] = Target({enabled: true, writtenOff: false, maxWeightBps: maxWeightBps, router: router, valuation: valuation, stock: stock});
         emit TargetSet(vault, maxWeightBps, router, valuation);
@@ -655,6 +698,13 @@ contract VertexAllocatorV1 {
         if (bps > MAX_LOSS_BPS) revert LossTooHigh();
         maxLossBps = bps;
         emit MaxLossSet(bps);
+    }
+
+    /// Repoint how a stock token's dust is valued, for example when the vault that introduced it is gone.
+    function setStockPricing(address stock, address valuation) external onlySelf {
+        if (!protectedToken[stock] || stock == address(USDG)) revert UnknownTarget();
+        if (IValuation(valuation).stock() != stock) revert TargetChanged();
+        stockPricing[stock] = StockPricing({valuation: valuation, isToken0: IPool(IValuation(valuation).pool()).token0() == stock});
     }
 
     function setMaxDailyLoss(uint16 bps) external onlySelf {

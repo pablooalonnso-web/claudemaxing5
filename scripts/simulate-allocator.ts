@@ -7,6 +7,7 @@
  *   npm run simulate:allocator -- --block 66715782 --vault PLTR --amount 1000
  */
 import { readFileSync } from "node:fs";
+import { createHash } from "node:crypto";
 import { decodeErrorResult, decodeFunctionResult, encodeAbiParameters, encodeDeployData, encodeFunctionData, formatUnits, getContractAddress, keccak256, pad, parseUnits, toHex, type Abi, type Address, type Hex, type PublicClient } from "viem";
 import { publicClient, USDG_ADDRESS } from "@/lib/chain";
 import { buildDepositQuote, readManagedState, swapSqrtLimit } from "@/lib/managed-vault";
@@ -46,7 +47,9 @@ function compileScenario() {
 
 async function main() {
   const client = publicClient();
-  const artifact = JSON.parse(readFileSync("src/data/allocator-v1.artifact.json", "utf8")) as { abi: Abi; bytecode: Hex };
+  const artifact = JSON.parse(readFileSync("src/data/allocator-v1.artifact.json", "utf8")) as { abi: Abi; bytecode: Hex; sourceSha256: string };
+  const sourceSha = createHash("sha256").update(readFileSync("contracts/VertexAllocatorV1.sol", "utf8")).digest("hex");
+  if (artifact.sourceSha256 !== sourceSha) throw new Error("src/data/allocator-v1.artifact.json was compiled from a different source. Run `npm run compile:allocator` first.");
   const scenario = compileScenario();
   const pin = VAULT_PINS.find((p) => p.symbol === SYMBOL)!;
   const entry = MANAGED_VAULTS.find((m) => m.id === pin.id)!;
@@ -102,16 +105,26 @@ async function main() {
     const res = await client.call({ to: SCENARIO, data, blockNumber: BLOCK, gas: GAS, stateOverride: overrides } as never);
     raw = res.data as Hex;
   } catch (e) {
-    const err = e as { cause?: { data?: Hex }; data?: Hex; shortMessage?: string; message?: string };
-    const hex = err.cause?.data ?? err.data;
+    let cur: unknown = e;
+    let hex: Hex | undefined;
+    const details: string[] = [];
+    for (let i = 0; i < 8 && cur && typeof cur === "object"; i++) {
+      const o = cur as { data?: unknown; details?: string; cause?: unknown; shortMessage?: string };
+      if (typeof o.data === "string" && o.data.startsWith("0x") && o.data.length > 2) hex = o.data as Hex;
+      if (typeof o.data === "object" && o.data && typeof (o.data as { data?: string }).data === "string") hex = (o.data as { data: Hex }).data;
+      if (o.details) details.push(o.details);
+      if (o.shortMessage) details.push(o.shortMessage);
+      cur = o.cause;
+    }
     if (hex) {
       try {
-        console.error("reverted:", decodeErrorResult({ abi: [...(artifact.abi as never[]), ...(scenario.abi as never[])], data: hex }));
+        const dec = decodeErrorResult({ abi: [...(artifact.abi as never[]), ...(scenario.abi as never[]), { type: "error", name: "Error", inputs: [{ name: "message", type: "string" }] }, { type: "error", name: "Panic", inputs: [{ name: "code", type: "uint256" }] }] as never, data: hex });
+        console.error("reverted:", dec.errorName, JSON.stringify(dec.args, (_, v) => (typeof v === "bigint" ? v.toString() : v)));
       } catch {
         console.error("reverted with", hex);
       }
     }
-    console.error(err.shortMessage ?? err.message);
+    console.error([...new Set(details)].join(" | "));
     process.exit(1);
   }
   const r = decodeFunctionResult({ abi: scenario.abi, functionName: "run", data: raw }) as unknown as Record<string, bigint | string>;
@@ -120,6 +133,7 @@ async function main() {
   const errName = (s: string) => ["WeightExceeded()", "BadReceiver()", "NotKeeper()"].find((n) => keccak256(new TextEncoder().encode(n)).slice(0, 10) === s) ?? s;
   void sel;
   console.log("");
+  if (r.note) console.log(`CHECK FAILED: ${r.note}`);
   console.log(`allocator deployed at ${r.allocator}`);
   console.log(`deposit: ${formatUnits(BigInt(r.sharesMinted), 12)} vaUSDG minted, fee ${usd(r.feePaid)} to treasury, idle ${usd(r.idleAfterDeposit)}`);
   console.log(`limits: over-weight budget → ${errName(String(r.weightError))}; foreign receiver → ${errName(String(r.receiverError))}; stranger caller → ${errName(String(r.strangerError))}`);
