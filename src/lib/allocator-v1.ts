@@ -10,7 +10,17 @@ import { MANAGED_VAULTS, type ManagedVaultRegistryEntry, type VaultPin } from ".
 
 export const allocatorV1Abi = artifact.abi as Abi;
 export const allocatorV1Bytecode = artifact.bytecode as Hex;
-export const allocatorV1Artifact = { compiler: artifact.compiler, settings: artifact.settings, sourceSha256: artifact.sourceSha256, runtime: artifact.deployedBytecode as Hex };
+export const allocatorV1Artifact = { compiler: artifact.compiler, settings: artifact.settings, sourceSha256: artifact.sourceSha256, runtime: artifact.deployedBytecode as Hex, immutableReferences: artifact.immutableReferences as { start: number; length: number }[] };
+
+/** The runtime the artifact predicts for a deployment on this chain: the compiler's output with the USDG immutable filled in. */
+export function expectedAllocatorRuntime(usdg: Address = USDG_ADDRESS): Hex {
+  const bytes = allocatorV1Artifact.runtime.slice(2).split("");
+  const value = usdg.slice(2).toLowerCase().padStart(64, "0");
+  for (const ref of allocatorV1Artifact.immutableReferences) for (let i = 0; i < ref.length * 2; i++) bytes[ref.start * 2 + i] = value[i];
+  return ("0x" + bytes.join("")) as Hex;
+}
+
+export const allocatorRuntimeMatches = (code: Hex | undefined) => (code ?? "0x").toLowerCase() === expectedAllocatorRuntime().toLowerCase();
 
 /** Launch parameters: small cap, 0.30% deposit fee, at most 35% in any one vault. */
 export const ALLOCATOR_V1_LAUNCH = { depositCap: 2_500_000_000n, depositFeeBps: 30, exitFeeBps: 30, maxWeightBps: 3500, minTargetAssets: 1_000_000_000n } as const; // exitFeeBps mirrors the contract constant EXIT_FEE_BPS
@@ -89,7 +99,7 @@ export async function readAllocatorV1(address: Address, pins: VaultPin[], client
   );
   const totalAssets = targets.some((t) => t.value === null) ? null : targets.reduce((a, t) => a + (t.value ?? 0n), idle);
   const pricePerShare = totalAssets === null ? null : ((totalAssets + 1n) * 10n ** 12n) / (totalSupply + 10n ** 6n);
-  return { address, block, owner, keeper, guardian, treasury, paused, depositCap, depositFeeBps: Number(depositFeeBps), minTargetAssets, maxLossBps: Number(maxLossBps), maxDailyLossBps: Number(maxDailyLossBps), dailyLoss, totalSupply, idle, totalAssets, pricePerShare, targets, codeMatches: (code ?? "0x").toLowerCase() === allocatorV1Artifact.runtime.toLowerCase() };
+  return { address, block, owner, keeper, guardian, treasury, paused, depositCap, depositFeeBps: Number(depositFeeBps), minTargetAssets, maxLossBps: Number(maxLossBps), maxDailyLossBps: Number(maxDailyLossBps), dailyLoss, totalSupply, idle, totalAssets, pricePerShare, targets, codeMatches: allocatorRuntimeMatches(code) };
 }
 
 export const encodeAllocatorDeposit = (assets: bigint, receiver: Address) => encodeFunctionData({ abi: allocatorV1Abi, functionName: "deposit", args: [assets, receiver] });

@@ -24,7 +24,7 @@ import { BURN_ADDRESS, robinhoodChain, TOKEN_ADDRESS, USDG_ADDRESS } from "@/lib
 import { buildDepositQuote, readManagedState, swapSqrtLimit } from "@/lib/managed-vault";
 import { LENDING_MARKETS, MANAGED_VAULTS, VAULT_PINS, type ManagedVaultRegistryEntry } from "@/lib/registry";
 import { getLendingMarkets, getLendingPosition } from "@/server/lending";
-import { ALLOCATOR_V1, ALLOCATOR_V1_LAUNCH, allocatorV1Abi, allocatorV1Artifact } from "@/lib/allocator-v1";
+import { ALLOCATOR_V1, ALLOCATOR_V1_LAUNCH, allocatorRuntimeMatches, allocatorV1Abi, allocatorV1Artifact } from "@/lib/allocator-v1";
 import { getStatus } from "@/server/status";
 import { kyberBuild, kyberRoute } from "@/server/trade";
 
@@ -342,7 +342,7 @@ async function main() {
     const c = { address: a, abi: allocatorV1Abi } as const;
     await check(al, "Bytecode", async () => {
       const code = (await client.getCode({ address: a })) ?? "0x";
-      const ok = code.toLowerCase() === allocatorV1Artifact.runtime.toLowerCase();
+      const ok = allocatorRuntimeMatches(code);
       return { status: ok ? "pass" : "fail", detail: ok ? `Matches the published artifact (solc ${allocatorV1Artifact.compiler.split("+")[0]}, source sha256 ${allocatorV1Artifact.sourceSha256.slice(0, 12)}…)` : "Deployed bytecode differs from src/data/allocator-v1.artifact.json" };
     });
     await check(al, "Roles and limits", async () => {

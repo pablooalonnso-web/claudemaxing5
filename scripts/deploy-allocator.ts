@@ -9,7 +9,7 @@ import { readFileSync, writeFileSync } from "node:fs";
 import { encodeDeployData, formatEther, formatUnits, type Address, type Hex } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import { createWalletClient, http } from "viem";
-import { ALLOCATOR_V1_LAUNCH, allocatorV1Abi, allocatorV1Artifact, allocatorV1Bytecode } from "@/lib/allocator-v1";
+import { ALLOCATOR_V1_LAUNCH, allocatorRuntimeMatches, allocatorV1Abi, allocatorV1Bytecode } from "@/lib/allocator-v1";
 import { publicClient, robinhoodChain, USDG_ADDRESS } from "@/lib/chain";
 import { directoryVaults } from "@/lib/registry";
 import { getVaultSnapshots } from "@/server/vault-snapshots";
@@ -69,7 +69,7 @@ async function main() {
   if (receipt.status !== "success" || !receipt.contractAddress) throw new Error(`deployment reverted in block ${receipt.blockNumber}`);
   const address = receipt.contractAddress;
   const code = (await client.getCode({ address })) ?? "0x";
-  const matches = code.toLowerCase() === allocatorV1Artifact.runtime.toLowerCase();
+  const matches = allocatorRuntimeMatches(code as Hex);
   const [onchainOwner, count] = await Promise.all([
     client.readContract({ address, abi: allocatorV1Abi, functionName: "owner" }) as Promise<Address>,
     client.readContract({ address, abi: allocatorV1Abi, functionName: "targetCount" }) as Promise<bigint>,
