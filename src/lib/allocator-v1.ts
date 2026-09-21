@@ -2,6 +2,7 @@
 
 import { encodeFunctionData, formatUnits, type Abi, type Address, type Hex, type PublicClient } from "viem";
 import artifact from "@/data/allocator-v1.artifact.json";
+import moduleArtifact from "@/data/vertex-lending-module.artifact.json";
 import deployed from "@/data/allocator-v1.json";
 import { managedValuationAbi, managedVaultAbi } from "./abis";
 import { publicClient, USDG_ADDRESS } from "./chain";
@@ -39,7 +40,9 @@ export function allocatorV1Address(): Address | null {
 
 const same = (a: string, b: string) => a.toLowerCase() === b.toLowerCase();
 
-export type AllocatorTarget = { vault: Address; entry: ManagedVaultRegistryEntry; symbol: string; enabled: boolean; writtenOff: boolean; maxWeightBps: number; shares: bigint; value: bigint | null };
+/** A target is a stock vault from the registry, or a module (a contract that answers like a vault, for example the lending module). */
+export type AllocatorTarget = { vault: Address; kind: "vault" | "module"; entry: ManagedVaultRegistryEntry | null; symbol: string; enabled: boolean; writtenOff: boolean; maxWeightBps: number; shares: bigint; value: bigint | null };
+const lendingModuleAbi = moduleArtifact.abi as Abi;
 
 export type AllocatorV1State = {
   address: Address;
@@ -92,9 +95,10 @@ export async function readAllocatorV1(address: Address, pins: VaultPin[], client
         client.readContract({ address: vault, abi: managedVaultAbi, functionName: "balanceOf", args: [address] }),
       ]);
       const value = shares > 0n && !cfg[1] ? await (client.readContract({ ...c, functionName: "valueOf", args: [vault] }) as Promise<bigint>).catch(() => null) : 0n;
-      const entry = MANAGED_VAULTS.find((m) => same(m.vault, vault));
+      const entry = MANAGED_VAULTS.find((m) => same(m.vault, vault)) ?? null;
       const pin = pins.find((p) => same(p.vault, vault));
-      return { vault, entry: entry!, symbol: pin?.symbol ?? entry?.name ?? vault.slice(0, 8), enabled: cfg[0], writtenOff: cfg[1], maxWeightBps: Number(cfg[2]), shares, value };
+      const symbol = entry ? (pin?.symbol ?? entry.name) : await (client.readContract({ address: vault, abi: lendingModuleAbi, functionName: "symbol" }) as Promise<string>).catch(() => vault.slice(0, 8));
+      return { vault, kind: entry ? "vault" : "module", entry, symbol, enabled: cfg[0], writtenOff: cfg[1], maxWeightBps: Number(cfg[2]), shares, value };
     }),
   );
   const totalAssets = targets.some((t) => t.value === null) ? null : targets.reduce((a, t) => a + (t.value ?? 0n), idle);
@@ -106,14 +110,42 @@ export const encodeAllocatorDeposit = (assets: bigint, receiver: Address) => enc
 export const encodeAllocatorWithdraw = (shares: bigint, receiver: Address, skip: Address[] = []) => encodeFunctionData({ abi: allocatorV1Abi, functionName: "withdraw", args: [shares, receiver, skip] });
 
 /** Builds the router entry for the allocator (it holds the USDG, so the same quote builder applies) and the `allocate` calldata. */
-export async function buildAllocate(allocator: Address, entry: ManagedVaultRegistryEntry, budget: bigint, client: PublicClient = publicClient()) {
-  const quote = await buildDepositQuote(entry, allocator, budget, false, client);
-  const e: DepositEntry = quote.entry;
-  return { quote, data: encodeFunctionData({ abi: allocatorV1Abi, functionName: "allocate", args: [entry.vault as Address, e] }) };
+export async function buildAllocate(allocator: Address, target: AllocatorTarget, budget: bigint, client: PublicClient = publicClient()) {
+  if (target.kind === "vault" && target.entry) {
+    const quote = await buildDepositQuote(target.entry, allocator, budget, false, client);
+    const e: DepositEntry = quote.entry;
+    return { shares: quote.shares, data: encodeFunctionData({ abi: allocatorV1Abi, functionName: "allocate", args: [target.vault, e] }) };
+  }
+  // A module takes the budget, the receiver, a deadline and the least units to accept; the swap and join legs mean nothing to it.
+  const [market, supplied, block] = await Promise.all([
+    client.readContract({ address: target.vault, abi: lendingModuleAbi, functionName: "MARKET" }) as Promise<Address>,
+    client.readContract({ address: target.vault, abi: lendingModuleAbi, functionName: "suppliedAssets" }) as Promise<bigint>,
+    client.getBlock(),
+  ]);
+  const tss = (await client.readContract({ address: market, abi: [{ type: "function", name: "totalSupplyShares", stateMutability: "view", inputs: [], outputs: [{ type: "uint256" }] }], functionName: "totalSupplyShares" })) as bigint;
+  const expected = supplied === 0n ? 0n : (budget * tss) / supplied;
+  const e: DepositEntry = {
+    budget,
+    swap: { amount: 0n, minOut: 0n, sqrtLimit: 0n, route: "0x" },
+    join: { shares: 0n, bootstrapLiquidity: 0n, maximum0: 0n, maximum1: 0n, minShares: (expected * 9_990n) / 10_000n, deadline: block.timestamp + 180n, configuration: 0n, receiver: allocator, acquire: false },
+  };
+  return { shares: expected, data: encodeFunctionData({ abi: allocatorV1Abi, functionName: "allocate", args: [target.vault, e] }) };
 }
 
 /** Exit arguments for `deallocate`, built the way the vault page builds a USDG withdrawal, with the contract's loss floor applied. */
-export async function buildDeallocate(allocator: Address, entry: ManagedVaultRegistryEntry, shares: bigint, maxLossBps: number, client: PublicClient = publicClient()) {
+export async function buildDeallocate(allocator: Address, target: AllocatorTarget, shares: bigint, maxLossBps: number, client: PublicClient = publicClient()) {
+  if (target.kind === "module" || !target.entry) {
+    const [expected, block] = await Promise.all([
+      client.readContract({ address: target.vault, abi: lendingModuleAbi, functionName: "assetsOf", args: [shares] }) as Promise<bigint>,
+      client.getBlock(),
+    ]);
+    let minimum = (expected * 9_990n) / 10_000n;
+    const floor = (expected * BigInt(10_000 - maxLossBps) + 9_999n) / 10_000n;
+    if (minimum < floor) minimum = floor;
+    const args = [target.vault, shares, minimum, block.timestamp + 180n, 0n, { minOut: 0n, sqrtLimit: 0n, route: "0x" as Hex }] as const;
+    return { expected, minimum, data: encodeFunctionData({ abi: allocatorV1Abi, functionName: "deallocate", args: [...args] }) };
+  }
+  const entry = target.entry;
   const state = await readManagedState(entry, allocator, client);
   if (!state.quote || state.value === null) throw new Error("USDG exit needs a fresh reference. Wait for the feed to update.");
   const stockIsToken0 = !same(entry.asset, entry.token0);

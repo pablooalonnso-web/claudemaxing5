@@ -226,7 +226,11 @@ export function Allocator() {
             await ensureAllowance(market, p.amount, p.symbol);
             update(i, { status: "depositing" });
             setNote(t("note.confirmSupply", { symbol: p.symbol }));
-            const hash = await send(market, encodeFunctionData({ abi: lendingMarketAbi, functionName: "supply", args: [p.amount] }));
+            // the market takes a floor on the units it issues: 0.1% under the quote, the way its own transactions do
+            const tss = BigInt(p.market.accounting.totalSupplyShares);
+            const supplied = BigInt(p.market.accounting.supplied);
+            const minUnits = supplied === 0n ? 0n : (((p.amount * tss) / supplied) * 9_990n) / 10_000n;
+            const hash = await send(market, encodeFunctionData({ abi: lendingMarketAbi, functionName: "supply", args: [p.amount, minUnits] }));
             update(i, { status: "done", hash });
           }
           window.dispatchEvent(new Event(BRAND.vaultUpdatedEvent));

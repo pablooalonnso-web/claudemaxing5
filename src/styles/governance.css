@@ -1,0 +1,37 @@
+/* Governance: stake, proposals, fee split. Builds on the basket and allocator panels. */
+.gov-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:24px;align-items:start}
+.gov-grid>.basket-panel{min-width:0}
+.gov-stats{margin:0;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px 16px}
+.gov-stats>div{display:grid;gap:3px;min-width:0}.gov-stats dt{font-size:11.5px;color:var(--muted)}.gov-stats dd{margin:0;font-size:15px;font-weight:600;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+.gov-split{display:flex;height:10px;border-radius:5px;overflow:hidden;background:var(--cream-2,#f1f1f3);margin:10px 0 6px}
+.gov-split i{display:block;height:100%}
+.gov-split i.buyback{background:var(--accent)}.gov-split i.stakers{background:var(--slate)}.gov-split i.treasury{background:var(--pink,#FFACFE)}
+.gov-legend{display:flex;flex-wrap:wrap;gap:8px 16px;margin:0;padding:0;list-style:none;font-size:12px;color:var(--ink-soft)}
+.gov-legend li{display:inline-flex;align-items:center;gap:6px}.gov-legend li i{width:10px;height:10px;border-radius:3px;display:inline-block}
+.gov-legend li i.buyback{background:var(--accent)}.gov-legend li i.stakers{background:var(--slate)}.gov-legend li i.treasury{background:var(--pink,#FFACFE)}
+.gov-actions{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-top:12px}
+.gov-actions .hex{display:inline-flex;align-items:center;gap:8px}
+.gov-props{list-style:none;margin:0;padding:0;display:grid;gap:10px}
+.gov-prop{display:grid;gap:8px;padding:14px 16px;border:1px solid var(--line-soft);border-radius:14px;background:var(--paper,#fff)}
+.gov-prop-head{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.gov-prop-head b{font-size:14.5px;font-weight:600}
+.gov-prop-head .mono{font-size:11px;color:var(--muted)}
+.gov-state{margin-left:auto;font-family:var(--mono);font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;padding:4px 9px;border-radius:999px;background:var(--cream-2,#f1f1f3);color:var(--ink-soft)}
+.gov-state.is-active{background:var(--seafoam,#c5ffd6);color:#0f5a3a}.gov-state.is-queued,.gov-state.is-succeeded{background:rgba(117,108,245,.14);color:#3d37a0}.gov-state.is-executed{background:var(--slate);color:var(--fog)}.gov-state.is-defeated,.gov-state.is-canceled,.gov-state.is-expired{background:rgba(255,172,254,.2);color:#a4459f}
+.gov-prop-call{font-family:var(--mono);font-size:12px;color:var(--ink-soft);overflow-wrap:anywhere}
+.gov-tally{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;font-size:12px;color:var(--ink-soft)}
+.gov-tally b{display:block;font-size:13.5px;color:var(--ink);font-variant-numeric:tabular-nums}
+.gov-bar{height:6px;border-radius:3px;background:var(--cream-2,#f1f1f3);overflow:hidden;display:flex}
+.gov-bar i{display:block;height:100%}.gov-bar i.for{background:var(--accent)}.gov-bar i.against{background:var(--pink,#FFACFE)}.gov-bar i.abstain{background:var(--slate);opacity:.35}
+.gov-prop-foot{display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center;font-size:12px;color:var(--muted)}
+.gov-prop-foot .basket-link{font-size:12.5px}
+.gov-form{display:grid;gap:10px;margin-top:12px;padding-top:12px;border-top:1px solid var(--line-soft)}
+.gov-form label{display:grid;gap:4px;font-size:12px;color:var(--muted)}
+.gov-form input,.gov-form select,.gov-form textarea{font:inherit;font-size:14px;padding:9px 11px;border:1px solid var(--line);border-radius:10px;background:var(--paper,#fff);color:var(--ink)}
+.gov-form textarea{min-height:60px;resize:vertical}
+.gov-form .gov-row{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.gov-steps{list-style:none;margin:0;padding:0;display:grid;gap:6px}
+.gov-steps li{display:flex;align-items:center;gap:10px;padding:8px 10px;border:1px solid var(--line-soft);border-radius:10px;font-size:13px}
+.gov-steps li i{width:13px;height:13px;border-radius:50%;border:1.5px solid var(--line);flex-shrink:0}
+.gov-steps li.is-done{background:rgba(197,255,214,.35)}.gov-steps li.is-done i{background:var(--accent);border-color:var(--accent)}
+@media (max-width:900px){.gov-grid{grid-template-columns:minmax(0,1fr)}.gov-stats{grid-template-columns:repeat(2,minmax(0,1fr))}.gov-form .gov-row{grid-template-columns:minmax(0,1fr)}}

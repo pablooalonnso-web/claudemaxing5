@@ -14,7 +14,11 @@
     "allocator": "tsx --tsconfig tsconfig.json scripts/allocator.ts",
     "compile:allocator": "tsx --tsconfig tsconfig.json scripts/compile-allocator.ts",
     "simulate:allocator": "tsx --tsconfig tsconfig.json scripts/simulate-allocator.ts",
-    "deploy:allocator": "tsx --tsconfig tsconfig.json scripts/deploy-allocator.ts"
+    "deploy:allocator": "tsx --tsconfig tsconfig.json scripts/deploy-allocator.ts",
+    "compile:contracts": "tsx --tsconfig tsconfig.json scripts/compile-contracts.ts",
+    "simulate:governance": "tsx --tsconfig tsconfig.json scripts/simulate-governance.ts",
+    "simulate:lending-module": "tsx --tsconfig tsconfig.json scripts/simulate-lending-module.ts",
+    "deploy:governance": "tsx --tsconfig tsconfig.json scripts/deploy-governance.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.126.0",

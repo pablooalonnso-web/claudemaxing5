@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { formatUnits, parseUnits, type Address, type Hex } from "viem";
-import { ArrowRight, ArrowUpRight, Check, CircleAlert, Lock, RefreshCw, ShieldCheck } from "lucide-react";
+import { ArrowRight, ArrowUpRight, Check, CircleAlert, Layers, Lock, RefreshCw, ShieldCheck } from "lucide-react";
 import { useProtocolVaults } from "@/components/data/ProtocolVaultProvider";
 import { StockLogo } from "@/components/StockLogo";
 import { useWallet } from "@/components/wallet/WalletProvider";
@@ -38,6 +38,7 @@ export function AllocatorV1() {
   const [lastHash, setLastHash] = useState<Hex | null>(null);
   const [steps, setSteps] = useState<Step[] | null>(null);
   const [deployedAddress, setDeployedAddress] = useState<Address | null>(null);
+  const [moduleAmount, setModuleAmount] = useState("");
   const busyRef = useRef(false);
 
   useEffect(() => setAddress(allocatorV1Address()), []);
@@ -157,7 +158,7 @@ export function AllocatorV1() {
     return p.positions
       .filter((x) => x.kind === "vault" && x.pin)
       .map((x) => {
-        const target = state.targets.find((y) => y.vault.toLowerCase() === x.pin!.vault.toLowerCase())!;
+        const target = state.targets.find((y) => y.kind === "vault" && y.vault.toLowerCase() === x.pin!.vault.toLowerCase())!;
         const room = (total * BigInt(target.maxWeightBps)) / 10_000n - (target.value ?? 0n);
         const budget = x.amount < room ? x.amount : room > 0n ? room : 0n;
         return { pin: x.pin!, target, budget: (budget * 98n) / 100n, score: x.score };
@@ -174,7 +175,7 @@ export function AllocatorV1() {
         const leg = plan[i];
         setSteps((s) => s!.map((x, j) => (j === i ? { ...x, status: "running" } : x)));
         try {
-          const { data } = await buildAllocate(address, leg.pin.preview, leg.budget);
+          const { data } = await buildAllocate(address, leg.target, leg.budget);
           const hash = await send(address, data, t("v1.keeper.confirm", { symbol: leg.pin.symbol }));
           setSteps((s) => s!.map((x, j) => (j === i ? { ...x, status: "done", hash } : x)));
         } catch (e) {
@@ -191,9 +192,29 @@ export function AllocatorV1() {
     const target = state.targets.find((x) => x.vault.toLowerCase() === vault.toLowerCase());
     if (!target || target.shares === 0n) return;
     void guarded(async () => {
-      const { data, expected, minimum } = await buildDeallocate(address, target.entry, target.shares, state.maxLossBps);
+      const { data, expected, minimum } = await buildDeallocate(address, target, target.shares, state.maxLossBps);
       await send(address, data, t("v1.keeper.confirmExit", { symbol: target.symbol, expected: fmtUsdg6(expected), floor: fmtUsdg6(minimum) }));
       setNote(t("v1.keeper.exited", { symbol: target.symbol }));
+    });
+  }
+
+  const moduleTargets = state ? state.targets.filter((x) => x.kind === "module" && x.enabled) : [];
+  const moduleRaw = useMemo(() => {
+    if (!/^(?:0|[1-9][0-9]*)(?:\.[0-9]{1,6})?$/.test(moduleAmount)) return null;
+    try {
+      const v = parseUnits(moduleAmount, 6);
+      return v > 0n ? v : null;
+    } catch {
+      return null;
+    }
+  }, [moduleAmount]);
+  function runModuleAllocation(target: (typeof moduleTargets)[number]) {
+    if (!address || !moduleRaw) return;
+    void guarded(async () => {
+      const { data } = await buildAllocate(address, target, moduleRaw);
+      await send(address, data, t("v1.keeper.confirm", { symbol: target.symbol }));
+      setNote(t("v1.keeper.done"));
+      setModuleAmount("");
     });
   }
 
@@ -333,9 +354,9 @@ export function AllocatorV1() {
                 return (
                   <li key={x.vault} className={`basket-leg alloc-leg${x.enabled ? "" : " is-off"}`}>
                     <span className="basket-rank">{String(i + 1).padStart(2, "0")}</span>
-                    <StockLogo symbol={x.symbol} size={36} />
+                    {x.kind === "vault" ? <StockLogo symbol={x.symbol} size={36} /> : <span className="alloc-module-icon" aria-hidden="true"><Layers size={18} strokeWidth={1.5} /></span>}
                     <div className="basket-leg-main">
-                      <b>{t("legs.vault", { symbol: x.symbol })}</b>
+                      <b>{x.kind === "vault" ? t("legs.vault", { symbol: x.symbol }) : t("v1.targets.module", { symbol: x.symbol })}</b>
                       <span>{x.writtenOff ? t("v1.targets.writtenOff") : x.enabled ? t("v1.targets.max", { pct: x.maxWeightBps / 100 }) : t("v1.targets.disabled")}</span>
                     </div>
                     <div className="basket-leg-amount">
@@ -347,9 +368,13 @@ export function AllocatorV1() {
                         <button type="button" className="basket-link" disabled={busy} onClick={() => runDeallocate(x.vault)}>
                           {t("v1.keeper.exit")}
                         </button>
-                      ) : (
+                      ) : x.entry ? (
                         <Link href={`/vaults/${x.entry.id}`}>
                           {t("legs.vaultLink")} <ArrowUpRight size={12} aria-hidden="true" />
+                        </Link>
+                      ) : (
+                        <Link href="/governance">
+                          {t("v1.targets.moduleLink")} <ArrowUpRight size={12} aria-hidden="true" />
                         </Link>
                       )}
                     </span>
@@ -497,6 +522,29 @@ export function AllocatorV1() {
               ) : (
                 <p className="basket-muted">{state && state.idle < 10_000_000n ? t("v1.keeper.nothingIdle") : t("v1.keeper.noCandidates")}</p>
               )}
+              {moduleTargets.length ? (
+                <div className="v1-module">
+                  <h3>{t("v1.keeper.moduleTitle")}</h3>
+                  <div className="amount-box amount-box-input">
+                    <div className="amount-box-top">
+                      <label htmlFor="v1-module-amount">{t("v1.keeper.moduleAmount")}</label>
+                      {state ? (
+                        <button type="button" className="max-link" disabled={busy} onClick={() => setModuleAmount(formatUnits(state.idle, 6))}>
+                          {t("v1.act.max", { amount: fmtUsdg6(state.idle) })}
+                        </button>
+                      ) : null}
+                    </div>
+                    <input id="v1-module-amount" className="wallet-amount-main" inputMode="decimal" placeholder="0" value={moduleAmount} disabled={busy} onChange={(e) => setModuleAmount(e.target.value.replace(/,/g, "."))} />
+                  </div>
+                  <div className="gov-actions">
+                    {moduleTargets.map((m) => (
+                      <button key={m.vault} type="button" className="hex hex-green" onClick={() => runModuleAllocation(m)} disabled={busy || !moduleRaw || !state || moduleRaw > state.idle}>
+                        {t("v1.keeper.moduleCta", { symbol: m.symbol })} <ArrowRight size={14} aria-hidden="true" />
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
             </div>
           ) : null}
         </section>

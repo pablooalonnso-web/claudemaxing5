@@ -19,6 +19,7 @@ const COLUMNS: Column[] = [
       { href: "/lending", key: "lending" },
       { href: "/strategies", key: "strategies" },
       { href: "/allocator", key: "allocator" },
+      { href: "/governance", key: "governance" },
       { href: "/trade/swap", key: "trade" },
       { href: "/zap", key: "zap" },
     ],

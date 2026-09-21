@@ -116,6 +116,31 @@ an allocation through the real router, an in-kind withdrawal and an exit back to
 page `/allocator/v1` deploys the contract from the connected wallet (which becomes owner, keeper, guardian and treasury)
 and, once `src/data/allocator-v1.json` carries the address, shows deposits, withdrawals and the keeper console.
 
+## Governance and modules (Phase 3)
+
+Four contracts under `contracts/` take the allocator from a team-run vault to one that VERTEX stakers run:
+
+- `VertexStaking.sol`: stake VERTEX for votes (staked balances, checkpointed by timestamp, so a proposal counts what
+  each account held at its snapshot) and for the stakers' share of the allocator fee in USDG. Unstaking removes the
+  votes at once and returns the tokens after a 7 day cooldown.
+- `VertexGovernor.sol`: one target and one call per proposal, targets whitelisted (the allocator, the fee splitter,
+  the staking contract, the governor itself), 1 day voting delay, 3 day vote, 4% quorum, 0.1% of the stake to propose.
+  A proposal aimed at the allocator is queued in the allocator's own timelock when it passes and applies after the
+  24 hour review window; the rest runs on execution. A guardian can veto anything that has not taken effect.
+- `VertexFeeSplitter.sol`: the allocator's treasury. Anyone can call `distribute()`; it splits the USDG between the
+  buyback wallet, the stakers (through the staking contract) and the treasury by shares governance sets.
+- `VertexLendingModule.sol`: the META lending market presented to the allocator as a vault (router, valuation, shares,
+  open and stopped flags), one module share per market supply unit, fail-closed while the market's oracle is
+  unavailable. Governance whitelists it with a `setTarget` proposal; nothing in the allocator changes.
+
+`npm run compile:contracts -- VertexStaking VertexGovernor VertexFeeSplitter VertexLendingModule` writes the artifacts.
+`npm run simulate:governance` and `npm run simulate:lending-module` run the scenarios in
+`contracts/test/` through `eth_simulateV1`: several simulated blocks with the clock moved forward, state carried from one
+to the next, the contracts' code and token balances injected through state overrides. Nothing is signed or sent.
+`npm run deploy:governance -- --treasury 0x… --guardian 0x…` deploys the four contracts from a throwaway key and wires
+them; the allocator's owner then queues the hand over (treasury to the splitter, ownership to the governor) from
+`/governance`, through the allocator's timelock.
+
 ## Badges
 
 Live SVG badges, generated per request from chain reads and the latest verification run. Drop one anywhere an image works:

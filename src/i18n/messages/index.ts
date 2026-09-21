@@ -10,6 +10,7 @@ import { docs } from "./docs";
 import { vaults } from "./vaults";
 import { strategies } from "./strategies";
 import { allocator } from "./allocator";
+import { governance } from "./governance";
 import { zap } from "./zap";
 import { lending } from "./lending";
 import { trade } from "./trade";
@@ -31,6 +32,7 @@ export const MESSAGES = {
   vaults,
   strategies,
   allocator,
+  governance,
   zap,
   lending,
   trade,

@@ -25,6 +25,7 @@ import { buildDepositQuote, readManagedState, swapSqrtLimit } from "@/lib/manage
 import { LENDING_MARKETS, MANAGED_VAULTS, VAULT_PINS, type ManagedVaultRegistryEntry } from "@/lib/registry";
 import { getLendingMarkets, getLendingPosition } from "@/server/lending";
 import { ALLOCATOR_V1, ALLOCATOR_V1_LAUNCH, allocatorRuntimeMatches, allocatorV1Abi, allocatorV1Artifact } from "@/lib/allocator-v1";
+import { GOVERNANCE, governanceDeployed, governorAbi, governorArt, lendingModuleAbi, lendingModuleArt, runtimeMatchesMasked, splitterAbi, splitterArt, stakingAbi, stakingArt } from "@/lib/governance";
 import { getStatus } from "@/server/status";
 import { kyberBuild, kyberRoute } from "@/server/trade";
 
@@ -381,6 +382,79 @@ async function main() {
       }
       return { status: bad ? "fail" : "pass", detail: `${n} target(s): ${rows.join(", ")}` };
     });
+  }
+
+  // ------------------------------------------------------------- governance
+  const gv = group("governance", "Governance", governanceDeployed() ? `Staking ${GOVERNANCE.staking}, governor ${GOVERNANCE.governor}, fee splitter ${GOVERNANCE.splitter}${GOVERNANCE.lendingModule ? `, lending module ${GOVERNANCE.lendingModule}` : ""}.` : "Not deployed yet; skipped.");
+  if (governanceDeployed()) {
+    const staking = GOVERNANCE.staking as Address;
+    const governor = GOVERNANCE.governor as Address;
+    const splitter = GOVERNANCE.splitter as Address;
+    const moduleAddr = GOVERNANCE.lendingModule as Address | null;
+    await check(gv, "Bytecode", async () => {
+      const codes = await Promise.all([staking, governor, splitter, ...(moduleAddr ? [moduleAddr] : [])].map((a) => client.getCode({ address: a })));
+      const arts = [stakingArt, governorArt, splitterArt, ...(moduleAddr ? [lendingModuleArt] : [])];
+      const bad = arts.filter((art, i) => !runtimeMatchesMasked(codes[i], art)).map((a) => a.contract);
+      return { status: bad.length ? "fail" : "pass", detail: bad.length ? `Runtime differs from the artifact for ${bad.join(", ")}` : `${arts.length} contracts match their published artifacts (solc ${stakingArt.compiler.split("+")[0]}, immutable slots masked and read back below)` };
+    });
+    await check(gv, "Wiring", async () => {
+      const st = { address: staking, abi: stakingAbi } as const;
+      const gvc = { address: governor, abi: governorAbi } as const;
+      const sp = { address: splitter, abi: splitterAbi } as const;
+      const [stGov, stRew, stVertex, stUsdg, gvStaking, gvAlloc, spOwner, spStaking, spUsdg] = await Promise.all([
+        client.readContract({ ...st, functionName: "governor" }) as Promise<Address>,
+        client.readContract({ ...st, functionName: "rewarder" }) as Promise<Address>,
+        client.readContract({ ...st, functionName: "VERTEX" }) as Promise<Address>,
+        client.readContract({ ...st, functionName: "USDG" }) as Promise<Address>,
+        client.readContract({ ...gvc, functionName: "STAKING" }) as Promise<Address>,
+        client.readContract({ ...gvc, functionName: "ALLOCATOR" }) as Promise<Address>,
+        client.readContract({ ...sp, functionName: "owner" }) as Promise<Address>,
+        client.readContract({ ...sp, functionName: "staking" }) as Promise<Address>,
+        client.readContract({ ...sp, functionName: "USDG" }) as Promise<Address>,
+      ]);
+      const ok = same(stGov, governor) && same(stRew, splitter) && same(stVertex, TOKEN_ADDRESS) && same(stUsdg, USDG_ADDRESS) && same(gvStaking, staking) && same(gvAlloc, ALLOCATOR_V1.address ?? "") && same(spOwner, governor) && same(spStaking, staking) && same(spUsdg, USDG_ADDRESS);
+      return { status: ok ? "pass" : "fail", detail: `staking governor ${stGov.slice(0, 10)}…, rewarder ${stRew.slice(0, 10)}…; governor votes from ${gvStaking.slice(0, 10)}… over allocator ${gvAlloc.slice(0, 10)}…; splitter owned by ${spOwner.slice(0, 10)}…, pays stakers through ${spStaking.slice(0, 10)}…` };
+    });
+    await check(gv, "Allocator hand over", async () => {
+      if (!ALLOCATOR_V1.address) return { status: "warn", detail: "Allocator not deployed" };
+      const a = ALLOCATOR_V1.address as Address;
+      const [owner, treasury] = await Promise.all([
+        client.readContract({ address: a, abi: allocatorV1Abi, functionName: "owner" }) as Promise<Address>,
+        client.readContract({ address: a, abi: allocatorV1Abi, functionName: "treasury" }) as Promise<Address>,
+      ]);
+      const done = same(owner, governor) && same(treasury, splitter);
+      return { status: done ? "pass" : "warn", detail: done ? "The governor owns the allocator and the fee splitter is its treasury" : `Pending: allocator owner ${owner.slice(0, 10)}…, treasury ${treasury.slice(0, 10)}… (the owner queues the hand over through the allocator's timelock)` };
+    });
+    await check(gv, "Parameters and proposals", async () => {
+      const gvc = { address: governor, abi: governorAbi } as const;
+      const [delay, period, quorum, threshold, guardian, count, totalStaked, splitB, splitS, splitT] = await Promise.all([
+        client.readContract({ ...gvc, functionName: "votingDelay" }) as Promise<bigint>,
+        client.readContract({ ...gvc, functionName: "votingPeriod" }) as Promise<bigint>,
+        client.readContract({ ...gvc, functionName: "quorumBps" }) as Promise<bigint>,
+        client.readContract({ ...gvc, functionName: "thresholdBps" }) as Promise<bigint>,
+        client.readContract({ ...gvc, functionName: "guardian" }) as Promise<Address>,
+        client.readContract({ ...gvc, functionName: "proposalCount" }) as Promise<bigint>,
+        client.readContract({ address: staking, abi: stakingAbi, functionName: "totalStaked" }) as Promise<bigint>,
+        client.readContract({ address: splitter, abi: splitterAbi, functionName: "buybackBps" }) as Promise<number>,
+        client.readContract({ address: splitter, abi: splitterAbi, functionName: "stakersBps" }) as Promise<number>,
+        client.readContract({ address: splitter, abi: splitterAbi, functionName: "treasuryBps" }) as Promise<number>,
+      ]);
+      const ok = Number(splitB) + Number(splitS) + Number(splitT) === 10_000 && period >= 86_400n;
+      return { status: ok ? "pass" : "fail", detail: `${Number(delay) / 3600}h delay, ${Number(period) / 3600}h vote, ${Number(quorum) / 100}% quorum, ${Number(threshold) / 100}% to propose, guardian ${guardian.slice(0, 10)}…; ${count} proposal(s); ${formatUnits(totalStaked, 18)} VERTEX staked; fee split ${Number(splitB) / 100}/${Number(splitS) / 100}/${Number(splitT) / 100}` };
+    });
+    if (moduleAddr) {
+      await check(gv, "Lending module", async () => {
+        const md = { address: moduleAddr, abi: lendingModuleAbi } as const;
+        const [market, supplied, open, cfg] = await Promise.all([
+          client.readContract({ ...md, functionName: "MARKET" }) as Promise<Address>,
+          (client.readContract({ ...md, functionName: "suppliedAssets" }) as Promise<bigint>).catch(() => null),
+          client.readContract({ ...md, functionName: "marketOpen" }) as Promise<boolean>,
+          ALLOCATOR_V1.address ? (client.readContract({ address: ALLOCATOR_V1.address as Address, abi: allocatorV1Abi, functionName: "targets", args: [moduleAddr] }) as Promise<readonly [boolean, boolean, number, Address, Address, Address]>) : Promise.resolve(null),
+        ]);
+        const ok = same(market, LENDING_MARKETS[0].market);
+        return { status: ok ? (open ? "pass" : "warn") : "fail", detail: `${ok ? "Wraps the META lending market" : `Wraps an unexpected market ${market}`}; ${supplied === null ? "supply unpriced while the oracle is unavailable" : `${formatUnits(supplied, 6)} USDG supplied`}; market ${open ? "open" : "closed or oracle unavailable"}; ${cfg ? (cfg[0] ? `whitelisted in the allocator at ${Number(cfg[2]) / 100}%` : "not whitelisted in the allocator yet") : "allocator not deployed"}` };
+      });
+    }
   }
 
   // ---------------------------------------------------------------- lending

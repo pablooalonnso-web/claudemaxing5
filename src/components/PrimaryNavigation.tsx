@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ArrowLeftRight, BarChart3, BookOpen, ChevronDown, Layers, LifeBuoy, Menu, Radar, Repeat, Route, Vault, WalletCards, X, Activity, Sparkles, Zap } from "lucide-react";
+import { ArrowLeftRight, BarChart3, BookOpen, ChevronDown, Landmark, Layers, LifeBuoy, Menu, Radar, Repeat, Route, Vault, WalletCards, X, Activity, Sparkles, Zap } from "lucide-react";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { WalletConnectButton } from "./wallet/WalletConnectButton";
 import { ContractAddress } from "./ContractAddress";
@@ -18,7 +18,8 @@ const PRODUCT_DEFS: ItemDef[] = [
   { href: "/vaults", key: "vaults", icon: <Vault size={18} strokeWidth={1.5} /> },
   { href: "/lending", key: "lending", icon: <Layers size={18} strokeWidth={1.5} /> },
   { href: "/strategies", key: "strategies", icon: <Repeat size={18} strokeWidth={1.5} /> },
-  { href: "/allocator", key: "allocator", icon: <Route size={18} strokeWidth={1.5} />, badge: "new" },
+  { href: "/allocator", key: "allocator", icon: <Route size={18} strokeWidth={1.5} /> },
+  { href: "/governance", key: "governance", icon: <Landmark size={18} strokeWidth={1.5} />, badge: "new" },
   { href: "/trade/swap", key: "trade", icon: <ArrowLeftRight size={18} strokeWidth={1.5} /> },
   { href: "/zap", key: "zap", icon: <Zap size={18} strokeWidth={1.5} /> },
   { href: "/intelligence", key: "intelligence", icon: <Radar size={18} strokeWidth={1.5} />, badge: "beta" },

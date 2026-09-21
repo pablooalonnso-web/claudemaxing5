@@ -130,12 +130,18 @@ export function LendingMarketWorkspace({ pin, initial }: { pin: LendingMarketPin
     try {
       if (chainId !== robinhoodChain.id) await switchChain();
       const marketAddress = pin.market as Address;
-      const call = (fn: "supply" | "withdraw" | "pledge" | "withdrawCollateral" | "borrow", value: bigint) =>
+      const call = (fn: "pledge" | "withdrawCollateral" | "borrow", value: bigint) =>
         encodeFunctionData({ abi: lendingMarketAbi, functionName: fn, args: [value] });
+      // supply and withdraw carry a floor (least units in, least USDG out): 0.1% under the quote, the way the market's own transactions do
+      const floor = (v: bigint) => (v * 9_990n) / 10_000n;
       if (action === "lend") {
         const raw = parseAmount(amount, decimals, t);
+        if (!market) throw new Error(t("ws.err.positionLoading"));
+        const tss = BigInt(market.accounting.totalSupplyShares);
+        const supplied = BigInt(market.accounting.supplied);
+        const units = supplied === 0n ? 0n : (raw * tss) / supplied;
         await ensureAllowance(pin.usdg as Address, raw);
-        await send(marketAddress, call("supply", raw), t("ws.tx.lending"));
+        await send(marketAddress, encodeFunctionData({ abi: lendingMarketAbi, functionName: "supply", args: [raw, floor(units)] }), t("ws.tx.lending"));
       } else if (action === "withdraw") {
         const raw = parseAmount(amount, decimals, t);
         if (!position || !market) throw new Error(t("ws.err.positionLoading"));
@@ -144,7 +150,8 @@ export function LendingMarketWorkspace({ pin, initial }: { pin: LendingMarketPin
         const units = supplied === 0n ? 0n : (raw * tss + supplied - 1n) / supplied;
         const capped = units > BigInt(position.supplyShares) ? BigInt(position.supplyShares) : units;
         if (capped === 0n) throw new Error(t("ws.err.withinPosition"));
-        await send(marketAddress, call("withdraw", capped), t("ws.tx.withdrawal"));
+        const out = tss === 0n ? 0n : (capped * supplied) / tss;
+        await send(marketAddress, encodeFunctionData({ abi: lendingMarketAbi, functionName: "withdraw", args: [capped, floor(out)] }), t("ws.tx.withdrawal"));
       } else if (action === "pledge") {
         const raw = parseAmount(amount, 18, t);
         await ensureAllowance(pin.vault as Address, raw);
