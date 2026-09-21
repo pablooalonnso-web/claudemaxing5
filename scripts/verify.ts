@@ -18,7 +18,7 @@
 import { execSync } from "node:child_process";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { createPublicClient, encodeAbiParameters, formatUnits, http, keccak256, pad, parseUnits, toHex, type Address, type Hex, type PublicClient } from "viem";
-import { erc20Abi, managedPositionAbi, managedRouterAbi, managedValuationAbi, managedVaultAbi } from "@/lib/abis";
+import { erc20Abi, managedPositionAbi, managedRouterAbi, managedValuationAbi, managedVaultAbi, uniswapV3PoolAbi } from "@/lib/abis";
 import { BRAND } from "@/lib/brand";
 import { BURN_ADDRESS, robinhoodChain, TOKEN_ADDRESS, USDG_ADDRESS } from "@/lib/chain";
 import { buildDepositQuote, readManagedState, swapSqrtLimit } from "@/lib/managed-vault";
@@ -110,6 +110,49 @@ async function probeSlot(token: Address, fn: "balanceOf" | "allowance", owner: A
 }
 const mappingSlot = (owner: Address, base: number) => keccak256(encodeAbiParameters([{ type: "address" }, { type: "bytes32" }], [owner, pad(toHex(base), { size: 32 })]));
 const allowanceSlot = (owner: Address, spender: Address, base: number) => keccak256(encodeAbiParameters([{ type: "address" }, { type: "bytes32" }], [spender, mappingSlot(owner, base)]));
+
+/**
+ * The router bounds every swap by the pool's 30 minute TWAP (100 ticks, about 1%). Right after an open the spot price can
+ * sit outside that band until the average catches up, and a pool whose price oracle reverts cannot be bounded at all.
+ * Names either condition instead of a bare error; returns null when the error is something else.
+ */
+async function twapGuard(entry: ManagedVaultRegistryEntry, e: unknown): Promise<{ status: Status; detail: string } | null> {
+  const msg = firstLine(e);
+  const pool = entry.pool as Address;
+  if (/Pool price or quote allowance unavailable|No swap room inside the TWAP boundary/i.test(msg)) {
+    try {
+      const [slot0, obs] = await Promise.all([
+        client.readContract({ address: pool, abi: uniswapV3PoolAbi, functionName: "slot0" }),
+        client.readContract({ address: pool, abi: uniswapV3PoolAbi, functionName: "observe", args: [[1800, 0]] }),
+      ]);
+      const delta = obs[0][1] - obs[0][0];
+      let twap = delta / 1800n;
+      if (delta < 0n && delta % 1800n !== 0n) twap -= 1n;
+      const gap = slot0[1] - Number(twap);
+      if (Math.abs(gap) >= 95) return { status: "warn", detail: `Refused by design: the pool price is ${Math.abs(gap)} ticks (${(Math.abs(gap) / 100).toFixed(2)}%) from its 30 minute average, at or beyond the router's 100 tick TWAP guard; swaps wait for the average to catch up` };
+    } catch {}
+    return null;
+  }
+  if (/"validatePool" reverted|"withdrawUSDG" reverted with the following signature/i.test(msg)) {
+    // The valuation refuses to price a pool whose spot sits too far from the Chainlink reference.
+    try {
+      const st = await readManagedState(entry, TEST_ACCOUNT, client);
+      const stockIsToken0 = !same(entry.asset, entry.token0);
+      const [dec0, dec1] = st.decimals;
+      const ratio = Math.pow(1.0001, st.tick) * Math.pow(10, dec0 - dec1); // token1 per token0
+      const poolPrice = stockIsToken0 ? ratio : 1 / ratio;
+      const ref = st.quote ? Number(formatUnits(st.quote.answer, st.quote.decimals)) : null;
+      const dev = ref ? ((poolPrice / ref - 1) * 100).toFixed(2) : null;
+      return { status: "warn", detail: `Refused by design: the valuation's pool guard rejects the pool state${dev ? ` (pool ${poolPrice.toFixed(2)} vs reference ${ref!.toFixed(2)}, ${dev}%)` : ""}${msg.match(/0x[0-9a-f]{8}/)?.[0] ? `, ${msg.match(/0x[0-9a-f]{8}/)![0]}` : ""}; deposits and USDG exits wait until the pool re-aligns with the Chainlink reference; token exits keep working` };
+    } catch {
+      return null;
+    }
+  }
+  if (/"observe" reverted/i.test(msg)) {
+    return { status: "fail", detail: `The pool's price oracle (observe) reverts${msg.match(/0x[0-9a-f]{8}/)?.[0] ? ` with ${msg.match(/0x[0-9a-f]{8}/)![0]}` : ""}: the router cannot bound a swap by the TWAP, so USDG deposits and USDG exits are unavailable for this vault until the pool oracle answers; token exits keep working` };
+  }
+  return null;
+}
 
 async function main() {
   const startedAt = new Date();
@@ -264,6 +307,8 @@ async function main() {
           if (!fresh.quote) return { status: "warn", detail: "Refused by design: no fresh Chainlink reference, so the router will not build a deposit" };
           if (fresh.tick <= fresh.lower || fresh.tick >= fresh.upper) return { status: "fail", detail: `Refused: pool tick ${fresh.tick} is outside the range [${fresh.lower}, ${fresh.upper}]; the keeper needs to re-range` };
         }
+        const guard = await twapGuard(entry, e);
+        if (guard) return guard;
         throw e;
       }
       const call = { address: entry.router as Address, abi: managedRouterAbi, functionName: "deposit", args: [quote.entry], account: TEST_ACCOUNT, stateOverride: override } as const;
@@ -326,8 +371,22 @@ async function main() {
       const swapLoss = s.lossLimits?.swapLossBps ?? entry.maxSwapLossBps;
       const minOut = (stockValue * BigInt(10_000 - swapLoss) + 9_999n) / 10_000n;
       const minimum = s.lossLimits ? usdgOut + minOut : (((s.value ?? 0n) * shares) / s.supply) * 98n / 100n;
-      const sqrtLimit = await swapSqrtLimit(entry, stockIsToken0, s.block, s.lossLimits?.slippageBps, client);
-      const usdg = await client.simulateContract({ address: router, abi: managedRouterAbi, functionName: "withdrawUSDG", args: [shares, TEST_ACCOUNT, minimum, deadline, s.epoch, { minOut, sqrtLimit, route: "0x" }], account: TEST_ACCOUNT, stateOverride: override, blockNumber: s.block });
+      let sqrtLimit: bigint;
+      try {
+        sqrtLimit = await swapSqrtLimit(entry, stockIsToken0, s.block, s.lossLimits?.slippageBps, client);
+      } catch (e) {
+        const guard = await twapGuard(entry, e);
+        if (guard) return { status: guard.status, detail: `Token exit works: ${amount(shares, 18)} shares → ${amount(stockOut, stockIsToken0 ? s.decimals[0] : s.decimals[1])} ${stockIsToken0 ? s.symbols[0] : s.symbols[1]} + ${formatUnits(usdgOut, 6)} USDG. USDG exit: ${guard.detail}` };
+        throw e;
+      }
+      let usdg: { result: bigint };
+      try {
+        usdg = await client.simulateContract({ address: router, abi: managedRouterAbi, functionName: "withdrawUSDG", args: [shares, TEST_ACCOUNT, minimum, deadline, s.epoch, { minOut, sqrtLimit, route: "0x" }], account: TEST_ACCOUNT, stateOverride: override, blockNumber: s.block });
+      } catch (e) {
+        const guard = await twapGuard(entry, e);
+        if (guard) return { status: guard.status, detail: `Token exit works: ${amount(shares, 18)} shares → ${amount(stockOut, stockIsToken0 ? s.decimals[0] : s.decimals[1])} ${stockIsToken0 ? s.symbols[0] : s.symbols[1]} + ${formatUnits(usdgOut, 6)} USDG. USDG exit: ${guard.detail}` };
+        throw e;
+      }
       const stockSym = stockIsToken0 ? s.symbols[0] : s.symbols[1];
       const stockDec = stockIsToken0 ? s.decimals[0] : s.decimals[1];
       return {

@@ -1,18 +1,18 @@
 {
   "version": 1,
-  "generatedAt": "2026-09-20T21:14:45.912Z",
-  "commit": "8be7061f7f7f991cd4b070f815e3e07032744cd4",
+  "generatedAt": "2026-09-21T14:14:10.907Z",
+  "commit": "25b4a5b200b2ab7bc1f8299cd4883a013e63f035",
   "site": "https://usevertex.xyz",
   "chain": {
     "id": 4663,
-    "head": "68253034",
-    "headTime": "2026-09-20T21:14:45.000Z",
+    "head": "68860115",
+    "headTime": "2026-09-21T14:14:11.000Z",
     "rpcHost": "rpc.mainnet.chain.robinhood.com"
   },
   "summary": {
-    "pass": 77,
-    "fail": 0,
-    "warn": 58,
+    "pass": 130,
+    "fail": 1,
+    "warn": 4,
     "skip": 0,
     "total": 135
   },
@@ -31,14 +31,14 @@
         {
           "name": "Chain head",
           "status": "pass",
-          "detail": "Block 68253034 sealed 1s ago",
+          "detail": "Block 68860115 sealed 0s ago",
           "ms": 0
         },
         {
           "name": "Multicall3",
           "status": "pass",
           "detail": "Contract present at 0xcA11…CA11, batched reads work",
-          "ms": 75
+          "ms": 85
         }
       ]
     },
@@ -51,13 +51,13 @@
           "name": "USDG",
           "status": "pass",
           "detail": "USDG, 6 decimals at 0x5fc5…d168",
-          "ms": 90
+          "ms": 110
         },
         {
           "name": "Vertex token",
           "status": "pass",
           "detail": "Vertex (VERTEX), 18 decimals, supply 1,000,000,000, 10748879.691262666501279926 at the burn address",
-          "ms": 100
+          "ms": 110
         },
         {
           "name": "Registry",
@@ -69,109 +69,109 @@
           "name": "AMZN wiring",
           "status": "pass",
           "detail": "Vault 0xF8DE…73D5 v7: router, position, oracle, treasury and buyback addresses match the registry; router settles in USDG",
-          "ms": 94
+          "ms": 107
         },
         {
           "name": "AAPL wiring",
           "status": "pass",
           "detail": "Vault 0x5eaD…641e v7: router, position, oracle, treasury and buyback addresses match the registry; router settles in USDG",
-          "ms": 145
+          "ms": 109
         },
         {
           "name": "AMD wiring",
           "status": "pass",
           "detail": "Vault 0x6bAb…532d v7: router, position, oracle, treasury and buyback addresses match the registry; router settles in USDG",
-          "ms": 94
+          "ms": 100
         },
         {
           "name": "CRCL wiring",
           "status": "pass",
           "detail": "Vault 0xB20b…221d v7: router, position, oracle, treasury and buyback addresses match the registry; router settles in USDG",
-          "ms": 106
+          "ms": 105
         },
         {
           "name": "GME wiring",
           "status": "pass",
           "detail": "Vault 0x9A8D…087b v7: router, position, oracle, treasury and buyback addresses match the registry; router settles in USDG",
-          "ms": 94
+          "ms": 107
         },
         {
           "name": "GOOGL wiring",
           "status": "pass",
           "detail": "Vault 0x6058…3A02 v7: router, position, oracle, treasury and buyback addresses match the registry; router settles in USDG",
-          "ms": 88
+          "ms": 117
         },
         {
           "name": "INTC wiring",
           "status": "pass",
           "detail": "Vault 0x7075…26Bd v7: router, position, oracle, treasury and buyback addresses match the registry; router settles in USDG",
-          "ms": 96
+          "ms": 108
         },
         {
           "name": "META wiring",
           "status": "pass",
           "detail": "Vault 0xE0d7…6456 v7: router, position, oracle, treasury and buyback addresses match the registry; router settles in USDG",
-          "ms": 90
+          "ms": 119
         },
         {
           "name": "MSFT wiring",
           "status": "pass",
           "detail": "Vault 0x387f…b057 v7: router, position, oracle, treasury and buyback addresses match the registry; router settles in USDG",
-          "ms": 94
+          "ms": 103
         },
         {
           "name": "MSTR wiring",
           "status": "pass",
           "detail": "Vault 0x2f93…559D v7: router, position, oracle, treasury and buyback addresses match the registry; router settles in USDG",
-          "ms": 100
+          "ms": 96
         },
         {
           "name": "MU wiring",
           "status": "pass",
           "detail": "Vault 0x3BB0…1026 v7: router, position, oracle, treasury and buyback addresses match the registry; router settles in USDG",
-          "ms": 100
+          "ms": 98
         },
         {
           "name": "NVDA wiring",
           "status": "pass",
           "detail": "Vault 0xc5aF…A876 v7: router, position, oracle, treasury and buyback addresses match the registry; router settles in USDG",
-          "ms": 94
+          "ms": 103
         },
         {
           "name": "PLTR wiring",
           "status": "pass",
           "detail": "Vault 0xD72F…400c v7: router, position, oracle, treasury and buyback addresses match the registry; router settles in USDG",
-          "ms": 97
+          "ms": 96
         },
         {
           "name": "QQQ wiring",
           "status": "pass",
           "detail": "Vault 0x3f70…3dDf v7: router, position, oracle, treasury and buyback addresses match the registry; router settles in USDG",
-          "ms": 90
+          "ms": 103
         },
         {
           "name": "SNDK wiring",
           "status": "pass",
           "detail": "Vault 0x8197…54b9 v7: router, position, oracle, treasury and buyback addresses match the registry; router settles in USDG",
-          "ms": 92
+          "ms": 114
         },
         {
           "name": "SPCX wiring",
           "status": "pass",
           "detail": "Vault 0x0350…79a2 v7: router, position, oracle, treasury and buyback addresses match the registry; router settles in USDG",
-          "ms": 108
+          "ms": 101
         },
         {
           "name": "SPY wiring",
           "status": "pass",
           "detail": "Vault 0x21ff…3787 v7: router, position, oracle, treasury and buyback addresses match the registry; router settles in USDG",
-          "ms": 95
+          "ms": 108
         },
         {
           "name": "TSLA wiring",
           "status": "pass",
           "detail": "Vault 0x7881…8eF6 v7: router, position, oracle, treasury and buyback addresses match the registry; router settles in USDG",
-          "ms": 93
+          "ms": 109
         }
       ]
     },
@@ -182,111 +182,111 @@
       "checks": [
         {
           "name": "AMZN",
-          "status": "warn",
-          "detail": "Paused by design: the Chainlink reference is stale, so the valuation reverts, deposits are refused and USDG exits wait; token exits still work (Block 68253055: open, tick -220987 in [-222180, -219960], oracle quote missing, value n/a, 0.000280901 shares)",
-          "ms": 338
+          "status": "pass",
+          "detail": "Block 68860135: open, tick -220869 in [-222180, -219960], oracle quote 5 min old, value $487, 0.000280901 shares",
+          "ms": 388
         },
         {
           "name": "AAPL",
-          "status": "warn",
-          "detail": "Paused by design: the Chainlink reference is stale, so the valuation reverts, deposits are refused and USDG exits wait; token exits still work (Block 68253055: open, tick 218201 in [217320, 219780], oracle quote missing, value n/a, 0.000178589 shares)",
-          "ms": 357
+          "status": "pass",
+          "detail": "Block 68860140: open, tick 218139 in [217320, 219780], oracle quote 7 min old, value $391, 0.000178589 shares",
+          "ms": 410
         },
         {
           "name": "AMD",
-          "status": "warn",
-          "detail": "Paused by design: the Chainlink reference is stale, so the valuation reverts, deposits are refused and USDG exits wait; token exits still work (Block 68253059: open, tick 213130 in [212800, 215400], oracle quote missing, value n/a, 0.000554376 shares)",
-          "ms": 337
-        },
-        {
-          "name": "CRCL",
-          "status": "warn",
-          "detail": "Paused by design: the Chainlink reference is stale, so the valuation reverts, deposits are refused and USDG exits wait; token exits still work (Block 68253065: open, tick 231229 in [229260, 233880], oracle quote missing, value n/a, 0.00123667 shares)",
-          "ms": 336
-        },
-        {
-          "name": "GME",
-          "status": "warn",
-          "detail": "Paused by design: the Chainlink reference is stale, so the valuation reverts, deposits are refused and USDG exits wait; token exits still work (Block 68253065: open, tick -245226 in [-247600, -244200], oracle quote missing, value n/a, 0.000516283 shares)",
-          "ms": 334
-        },
-        {
-          "name": "GOOGL",
-          "status": "warn",
-          "detail": "Paused by design: the Chainlink reference is stale, so the valuation reverts, deposits are refused and USDG exits wait; token exits still work (Block 68253070: open, tick -217737 in [-219540, -217080], oracle quote missing, value n/a, 0.000176388 shares)",
-          "ms": 328
-        },
-        {
-          "name": "INTC",
-          "status": "warn",
-          "detail": "Paused by design: the Chainlink reference is stale, so the valuation reverts, deposits are refused and USDG exits wait; token exits still work (Block 68253075: open, tick 229224 in [227800, 230400], oracle quote missing, value n/a, 0.00107991 shares)",
-          "ms": 353
-        },
-        {
-          "name": "META",
-          "status": "warn",
-          "detail": "Paused by design: the Chainlink reference is stale, so the valuation reverts, deposits are refused and USDG exits wait; token exits still work (Block 68253075: open, tick 211258 in [210480, 213000], oracle quote missing, value n/a, 0.000674272 shares)",
-          "ms": 324
-        },
-        {
-          "name": "MSFT",
-          "status": "warn",
-          "detail": "Paused by design: the Chainlink reference is stale, so the valuation reverts, deposits are refused and USDG exits wait; token exits still work (Block 68253080: open, tick 214284 in [213180, 215640], oracle quote missing, value n/a, 0.00015118 shares)",
-          "ms": 360
-        },
-        {
-          "name": "MSTR",
-          "status": "warn",
-          "detail": "Paused by design: the Chainlink reference is stale, so the valuation reverts, deposits are refused and USDG exits wait; token exits still work (Block 68253084: open, tick 225896 in [225800, 230200], oracle quote missing, value n/a, 0.000887717 shares)",
-          "ms": 333
-        },
-        {
-          "name": "MU",
-          "status": "warn",
-          "detail": "Paused by design: the Chainlink reference is stale, so the valuation reverts, deposits are refused and USDG exits wait; token exits still work (Block 68253084: open, tick 207178 in [205800, 210120], oracle quote missing, value n/a, 0.000104916 shares)",
-          "ms": 1305
-        },
-        {
-          "name": "NVDA",
-          "status": "warn",
-          "detail": "Paused by design: the Chainlink reference is stale, so the valuation reverts, deposits are refused and USDG exits wait; token exits still work (Block 68253093: open, tick 222319 in [221300, 223700], oracle quote missing, value n/a, 0.000231143 shares)",
-          "ms": 387
-        },
-        {
-          "name": "PLTR",
-          "status": "warn",
-          "detail": "Paused by design: the Chainlink reference is stale, so the valuation reverts, deposits are refused and USDG exits wait; token exits still work (Block 68253094: open, tick 224567 in [224000, 226600], oracle quote missing, value n/a, 0.00213648 shares)",
-          "ms": 350
-        },
-        {
-          "name": "QQQ",
-          "status": "warn",
-          "detail": "Paused by design: the Chainlink reference is stale, so the valuation reverts, deposits are refused and USDG exits wait; token exits still work (Block 68253094: open, tick 210510 in [209850, 211400], oracle quote missing, value n/a, 0.000192432 shares)",
+          "status": "pass",
+          "detail": "Block 68860145: open, tick 212263 in [211400, 214000], oracle quote 2 min old, value $1,706, 0.000554376 shares",
           "ms": 377
         },
         {
+          "name": "CRCL",
+          "status": "pass",
+          "detail": "Block 68860145: open, tick 230752 in [229260, 233880], oracle quote 0 min old, value $2,672, 0.00123667 shares",
+          "ms": 383
+        },
+        {
+          "name": "GME",
+          "status": "pass",
+          "detail": "Block 68860150: open, tick -245083 in [-247600, -244200], oracle quote 16 min old, value $403, 0.000516283 shares",
+          "ms": 407
+        },
+        {
+          "name": "GOOGL",
+          "status": "pass",
+          "detail": "Block 68860155: open, tick -217610 in [-219540, -217080], oracle quote 6 min old, value $394, 0.000176388 shares",
+          "ms": 423
+        },
+        {
+          "name": "INTC",
+          "status": "pass",
+          "detail": "Block 68860160: open, tick 228575 in [227800, 230400], oracle quote 3 min old, value $1,460, 0.00107991 shares",
+          "ms": 398
+        },
+        {
+          "name": "META",
+          "status": "pass",
+          "detail": "Block 68860165: open, tick 210618 in [210480, 213000], oracle quote 9 min old, value $2,175, 0.000674272 shares",
+          "ms": 405
+        },
+        {
+          "name": "MSFT",
+          "status": "pass",
+          "detail": "Block 68860165: open, tick 214260 in [213180, 215640], oracle quote 0 min old, value $402, 0.00015118 shares",
+          "ms": 389
+        },
+        {
+          "name": "MSTR",
+          "status": "pass",
+          "detail": "Block 68860170: open, tick 225160 in [223400, 227800], oracle quote 9 min old, value $2,279, 0.000887717 shares",
+          "ms": 395
+        },
+        {
+          "name": "MU",
+          "status": "pass",
+          "detail": "Block 68860176: open, tick 206913 in [205800, 210120], oracle quote 3 min old, value $398, 0.000104916 shares",
+          "ms": 415
+        },
+        {
+          "name": "NVDA",
+          "status": "pass",
+          "detail": "Block 68860180: open, tick 222234 in [221300, 223700], oracle quote 12 min old, value $403, 0.000231143 shares",
+          "ms": 392
+        },
+        {
+          "name": "PLTR",
+          "status": "pass",
+          "detail": "Block 68860185: open, tick 224397 in [224000, 226600], oracle quote 13 min old, value $3,628, 0.00213648 shares",
+          "ms": 429
+        },
+        {
+          "name": "QQQ",
+          "status": "pass",
+          "detail": "Block 68860185: open, tick 210354 in [209850, 211400], oracle quote 29 min old, value $395, 0.000192432 shares",
+          "ms": 417
+        },
+        {
           "name": "SNDK",
-          "status": "warn",
-          "detail": "Paused by design: the Chainlink reference is stale, so the valuation reverts, deposits are refused and USDG exits wait; token exits still work (Block 68253101: open, tick 201503 in [200800, 205600], oracle quote missing, value n/a, 0.0000787578 shares)",
-          "ms": 355
+          "status": "pass",
+          "detail": "Block 68860191: open, tick 201440 in [200800, 205600], oracle quote 12 min old, value $407, 0.0000787578 shares",
+          "ms": 376
         },
         {
           "name": "SPCX",
-          "status": "warn",
-          "detail": "Paused by design: the Chainlink reference is stale, so the valuation reverts, deposits are refused and USDG exits wait; token exits still work (Block 68253107: open, tick -225975 in [-227500, -225080], oracle quote missing, value n/a, 0.00094362 shares)",
-          "ms": 338
+          "status": "pass",
+          "detail": "Block 68860196: open, tick -225867 in [-227500, -225080], oracle quote 6 min old, value $1,382, 0.00094362 shares",
+          "ms": 388
         },
         {
           "name": "SPY",
-          "status": "warn",
-          "detail": "Paused by design: the Chainlink reference is stale, so the valuation reverts, deposits are refused and USDG exits wait; token exits still work (Block 68253107: open, tick -209954 in [-210540, -209340], oracle quote missing, value n/a, 0.000238681 shares)",
-          "ms": 326
+          "status": "pass",
+          "detail": "Block 68860200: open, tick -209907 in [-210540, -209340], oracle quote 0 min old, value $392, 0.000238681 shares",
+          "ms": 433
         },
         {
           "name": "TSLA",
-          "status": "warn",
-          "detail": "Paused by design: the Chainlink reference is stale, so the valuation reverts, deposits are refused and USDG exits wait; token exits still work (Block 68253112: open, tick -217350 in [-219300, -216120], oracle quote missing, value n/a, 0.0117928 shares)",
-          "ms": 403
+          "status": "pass",
+          "detail": "Block 68860206: open, tick -217043 in [-219300, -216120], oracle quote 29 min old, value $1,382, 0.0117928 shares",
+          "ms": 371
         }
       ]
     },
@@ -299,109 +299,109 @@
           "name": "AMZN",
           "status": "pass",
           "detail": "Matches what the site describes. Counters show 70% compounds, 20% buyback, 10% protocol treasury (AMZN gross 0.00275151, USDG gross 0.658194)",
-          "ms": 89
+          "ms": 101
         },
         {
           "name": "AAPL",
           "status": "pass",
           "detail": "Matches what the site describes. Counters show 70% compounds, 20% buyback, 10% protocol treasury (USDG gross 0.206443, AAPL gross 0.000593521)",
-          "ms": 84
+          "ms": 109
         },
         {
           "name": "AMD",
           "status": "pass",
-          "detail": "Matches what the site describes. Counters show 70% compounds, 20% buyback, 10% protocol treasury (USDG gross 6.61755, AMD gross 0.00587062)",
-          "ms": 91
+          "detail": "Matches what the site describes. Counters show 70% compounds, 20% buyback, 10% protocol treasury (USDG gross 16.6884, AMD gross 0.0142811)",
+          "ms": 95
         },
         {
           "name": "CRCL",
           "status": "pass",
           "detail": "Matches what the site describes. Counters show 70% compounds, 20% buyback, 10% protocol treasury (USDG gross 16.9472, CRCL gross 0.196436)",
-          "ms": 83
+          "ms": 110
         },
         {
           "name": "GME",
           "status": "pass",
           "detail": "Matches what the site describes. Counters show 70% compounds, 20% buyback, 10% protocol treasury (GME gross 0.0193086, USDG gross 0.622202)",
-          "ms": 95
+          "ms": 108
         },
         {
           "name": "GOOGL",
           "status": "pass",
           "detail": "Matches what the site describes. Counters show 70% compounds, 20% buyback, 10% protocol treasury (GOOGL gross 0.000620239, USDG gross 0.309207)",
-          "ms": 105
+          "ms": 107
         },
         {
           "name": "INTC",
           "status": "pass",
           "detail": "Matches what the site describes. Counters show 70% compounds, 20% buyback, 10% protocol treasury (USDG gross 17.317, INTC gross 0.105479)",
-          "ms": 85
+          "ms": 107
         },
         {
           "name": "META",
           "status": "pass",
           "detail": "Matches what the site describes. Counters show 70% compounds, 20% buyback, 10% protocol treasury (USDG gross 8.29819, META gross 0.0124725)",
-          "ms": 85
+          "ms": 111
         },
         {
           "name": "MSFT",
           "status": "pass",
           "detail": "Matches what the site describes. Counters show 70% compounds, 20% buyback, 10% protocol treasury (USDG gross 0.390879, MSFT gross 0.000651629)",
-          "ms": 83
+          "ms": 106
         },
         {
           "name": "MSTR",
           "status": "pass",
-          "detail": "Matches what the site describes. Counters show 70% compounds, 20% buyback, 10% protocol treasury (USDG gross 15.5719, MSTR gross 0.0770717)",
-          "ms": 83
+          "detail": "Matches what the site describes. Counters show 70% compounds, 20% buyback, 10% protocol treasury (USDG gross 19.3419, MSTR gross 0.0934885)",
+          "ms": 106
         },
         {
           "name": "MU",
           "status": "pass",
           "detail": "Matches what the site describes. Counters show 70% compounds, 20% buyback, 10% protocol treasury (USDG gross 0.49299, MU gross 0.000666565)",
-          "ms": 94
+          "ms": 110
         },
         {
           "name": "NVDA",
           "status": "pass",
           "detail": "Matches what the site describes. Counters show 70% compounds, 20% buyback, 10% protocol treasury (USDG gross 0.345324, NVDA gross 0.00155875)",
-          "ms": 104
+          "ms": 98
         },
         {
           "name": "PLTR",
           "status": "pass",
           "detail": "Matches what the site describes. Counters show 70% compounds, 20% buyback, 10% protocol treasury (USDG gross 22.8431, PLTR gross 0.116518)",
-          "ms": 92
+          "ms": 98
         },
         {
           "name": "QQQ",
           "status": "pass",
           "detail": "Matches what the site describes. Counters show 70% compounds, 20% buyback, 10% protocol treasury (USDG gross 0.273977, QQQ gross 0.000392824)",
-          "ms": 91
+          "ms": 101
         },
         {
           "name": "SNDK",
           "status": "pass",
           "detail": "Matches what the site describes. Counters show 70% compounds, 20% buyback, 10% protocol treasury (USDG gross 0.522224, SNDK gross 0.000696173)",
-          "ms": 93
+          "ms": 96
         },
         {
           "name": "SPCX",
           "status": "pass",
           "detail": "Matches what the site describes. Counters show 70% compounds, 20% buyback, 10% protocol treasury (SPCX gross 0.00482947, USDG gross 0.733566)",
-          "ms": 89
+          "ms": 154
         },
         {
           "name": "SPY",
           "status": "pass",
           "detail": "Matches what the site describes. Counters show 70% compounds, 20% buyback, 10% protocol treasury (SPY gross 0.0000786477, USDG gross 0.032871)",
-          "ms": 88
+          "ms": 104
         },
         {
           "name": "TSLA",
           "status": "pass",
           "detail": "Matches what the site describes. Counters show 70% compounds, 20% buyback, 10% protocol treasury (TSLA gross 0.0109198, USDG gross 3.20437)",
-          "ms": 87
+          "ms": 104
         }
       ]
     },
@@ -414,115 +414,115 @@
           "name": "USDG storage layout",
           "status": "pass",
           "detail": "balances mapping at slot 1, allowances mapping at slot 3 (found by probing eth_call state overrides)",
-          "ms": 0
+          "ms": 1
         },
         {
           "name": "AMZN",
-          "status": "warn",
-          "detail": "Refused by design: no fresh Chainlink reference, so the router will not build a deposit",
-          "ms": 971
+          "status": "pass",
+          "detail": "100 USDG → 0.0000559534 shares, swap leg 40.730879 USDG, router.deposit executes with 1,507,416 gas",
+          "ms": 1293
         },
         {
           "name": "AAPL",
-          "status": "warn",
-          "detail": "Refused by design: no fresh Chainlink reference, so the router will not build a deposit",
-          "ms": 695
+          "status": "pass",
+          "detail": "100 USDG → 0.0000442773 shares, swap leg 33.451863 USDG, router.deposit executes with 1,948,356 gas",
+          "ms": 3649
         },
         {
           "name": "AMD",
           "status": "warn",
-          "detail": "Refused by design: no fresh Chainlink reference, so the router will not build a deposit",
-          "ms": 756
+          "detail": "Refused by design: the valuation's pool guard rejects the pool state (pool 605.34 vs reference 611.52, -1.01%); deposits and USDG exits wait until the pool re-aligns with the Chainlink reference; token exits keep working",
+          "ms": 893
         },
         {
           "name": "CRCL",
-          "status": "warn",
-          "detail": "Refused by design: no fresh Chainlink reference, so the router will not build a deposit",
-          "ms": 749
+          "status": "pass",
+          "detail": "100 USDG → 0.0000448872 shares, swap leg 32.93718 USDG, router.deposit executes with 1,536,867 gas",
+          "ms": 3650
         },
         {
           "name": "GME",
-          "status": "warn",
-          "detail": "Refused by design: no fresh Chainlink reference, so the router will not build a deposit",
-          "ms": 727
+          "status": "pass",
+          "detail": "100 USDG → 0.000124205 shares, swap leg 26.950637 USDG, router.deposit executes with 1,499,639 gas",
+          "ms": 1001
         },
         {
           "name": "GOOGL",
-          "status": "warn",
-          "detail": "Refused by design: no fresh Chainlink reference, so the router will not build a deposit",
-          "ms": 707
+          "status": "pass",
+          "detail": "100 USDG → 0.0000434506 shares, swap leg 21.933672 USDG, router.deposit executes with 1,951,331 gas",
+          "ms": 955
         },
         {
           "name": "INTC",
-          "status": "warn",
-          "detail": "Refused by design: no fresh Chainlink reference, so the router will not build a deposit",
-          "ms": 711
+          "status": "pass",
+          "detail": "100 USDG → 0.0000717436 shares, swap leg 31.062331 USDG, router.deposit executes with 1,914,631 gas",
+          "ms": 1005
         },
         {
           "name": "META",
-          "status": "warn",
-          "detail": "Refused by design: no fresh Chainlink reference, so the router will not build a deposit",
-          "ms": 723
+          "status": "pass",
+          "detail": "100 USDG → 0.0000300745 shares, swap leg 6.273929 USDG, router.deposit executes with 1,975,590 gas",
+          "ms": 955
         },
         {
           "name": "MSFT",
-          "status": "warn",
-          "detail": "Refused by design: no fresh Chainlink reference, so the router will not build a deposit",
-          "ms": 694
+          "status": "pass",
+          "detail": "100 USDG → 0.0000364521 shares, swap leg 43.52144 USDG, router.deposit executes with 1,507,095 gas",
+          "ms": 3640
         },
         {
           "name": "MSTR",
-          "status": "warn",
-          "detail": "Refused by design: no fresh Chainlink reference, so the router will not build a deposit",
-          "ms": 744
+          "status": "pass",
+          "detail": "100 USDG → 0.0000377833 shares, swap leg 40.421629 USDG, router.deposit executes with 1,529,664 gas",
+          "ms": 962
         },
         {
           "name": "MU",
           "status": "warn",
-          "detail": "Refused by design: no fresh Chainlink reference, so the router will not build a deposit",
-          "ms": 716
+          "detail": "Refused by design: the pool price is 139 ticks (1.39%) from its 30 minute average, at or beyond the router's 100 tick TWAP guard; swaps wait for the average to catch up",
+          "ms": 572
         },
         {
           "name": "NVDA",
-          "status": "warn",
-          "detail": "Refused by design: no fresh Chainlink reference, so the router will not build a deposit",
-          "ms": 685
+          "status": "pass",
+          "detail": "100 USDG → 0.0000556616 shares, swap leg 38.712029 USDG, router.deposit executes with 1,525,943 gas",
+          "ms": 995
         },
         {
           "name": "PLTR",
-          "status": "warn",
-          "detail": "Refused by design: no fresh Chainlink reference, so the router will not build a deposit",
-          "ms": 704
+          "status": "pass",
+          "detail": "100 USDG → 0.0000571206 shares, swap leg 16.517824 USDG, router.deposit executes with 1,972,805 gas",
+          "ms": 1024
         },
         {
           "name": "QQQ",
-          "status": "warn",
-          "detail": "Refused by design: no fresh Chainlink reference, so the router will not build a deposit",
-          "ms": 691
+          "status": "pass",
+          "detail": "100 USDG → 0.0000471989 shares, swap leg 32.348344 USDG, router.deposit executes with 1,502,764 gas",
+          "ms": 1078
         },
         {
           "name": "SNDK",
-          "status": "warn",
-          "detail": "Refused by design: no fresh Chainlink reference, so the router will not build a deposit",
-          "ms": 698
+          "status": "pass",
+          "detail": "100 USDG → 0.0000187713 shares, swap leg 14.781841 USDG, router.deposit executes with 1,971,988 gas",
+          "ms": 1011
         },
         {
           "name": "SPCX",
-          "status": "warn",
-          "detail": "Refused by design: no fresh Chainlink reference, so the router will not build a deposit",
-          "ms": 9397
+          "status": "pass",
+          "detail": "100 USDG → 0.0000662347 shares, swap leg 32.524904 USDG, router.deposit executes with 1,521,684 gas",
+          "ms": 1061
         },
         {
           "name": "SPY",
-          "status": "warn",
-          "detail": "Refused by design: no fresh Chainlink reference, so the router will not build a deposit",
-          "ms": 742
+          "status": "pass",
+          "detail": "100 USDG → 0.0000591253 shares, swap leg 46.711845 USDG, router.deposit executes with 1,953,279 gas",
+          "ms": 1158
         },
         {
           "name": "TSLA",
-          "status": "warn",
-          "detail": "Refused by design: no fresh Chainlink reference, so the router will not build a deposit",
-          "ms": 716
+          "status": "pass",
+          "detail": "100 USDG → 0.000827543 shares, swap leg 29.656712 USDG, router.deposit executes with 1,516,410 gas",
+          "ms": 3634
         }
       ]
     },
@@ -539,111 +539,111 @@
         },
         {
           "name": "AMZN",
-          "status": "warn",
-          "detail": "Token exit works: 0.000000280901 shares → 0.00088611 AMZN + 0.259535 USDG (1% floor honoured: 0.00088611 AMZN and 0.259535 USDG). USDG exit waits for a fresh Chainlink reference, by design",
-          "ms": 694
+          "status": "pass",
+          "detail": "0.000000280901 shares → tokens: 0.000782109 AMZN + 0.286111 USDG · USDG only: 0.485759 USDG (floor 0.481943); with a 1% floor the token route returns 0.000782109 AMZN and 0.286111 USDG",
+          "ms": 1036
         },
         {
           "name": "AAPL",
-          "status": "warn",
-          "detail": "Token exit works: 0.000000178589 shares → 0.000422973 AAPL + 0.248415 USDG (1% floor honoured: 0.248415 USDG and 0.000422973 AAPL). USDG exit waits for a fresh Chainlink reference, by design",
-          "ms": 687
+          "status": "pass",
+          "detail": "0.000000178589 shares → tokens: 0.000392706 AAPL + 0.258708 USDG · USDG only: 0.39034 USDG (floor 0.388855); with a 1% floor the token route returns 0.258708 USDG and 0.000392706 AAPL",
+          "ms": 995
         },
         {
           "name": "AMD",
-          "status": "warn",
-          "detail": "Token exit works: 0.000000554376 shares → 0.000402573 AMD + 1.413732 USDG (1% floor honoured: 1.41373 USDG and 0.000402573 AMD). USDG exit waits for a fresh Chainlink reference, by design",
-          "ms": 711
+          "status": "fail",
+          "detail": "Token exit works: 0.000000554376 shares → 0.000958113 AMD + 1.119849 USDG. USDG exit: The pool's price oracle (observe) reverts: the router cannot bound a swap by the TWAP, so USDG deposits and USDG exits are unavailable for this vault until the pool oracle answers; token exits keep working",
+          "ms": 904
         },
         {
           "name": "CRCL",
-          "status": "warn",
-          "detail": "Token exit works: 0.00000123667 shares → 0.0124424 CRCL + 1.488033 USDG (1% floor honoured: 1.48803 USDG and 0.0124424 CRCL). USDG exit waits for a fresh Chainlink reference, by design",
-          "ms": 677
+          "status": "pass",
+          "detail": "0.00000123667 shares → tokens: 0.00930449 CRCL + 1.783919 USDG · USDG only: 2.669272 USDG (floor 2.650192); with a 1% floor the token route returns 1.78392 USDG and 0.00930449 CRCL",
+          "ms": 975
         },
         {
           "name": "GME",
-          "status": "warn",
-          "detail": "Token exit works: 0.000000516283 shares → 0.00551676 GME + 0.275449 USDG (1% floor honoured: 0.00551676 GME and 0.275449 USDG). USDG exit waits for a fresh Chainlink reference, by design",
-          "ms": 689
+          "status": "pass",
+          "detail": "0.000000516283 shares → tokens: 0.00477251 GME + 0.293933 USDG · USDG only: 0.401362 USDG (floor 0.400468); with a 1% floor the token route returns 0.00477251 GME and 0.293933 USDG",
+          "ms": 1018
         },
         {
           "name": "GOOGL",
-          "status": "warn",
-          "detail": "Token exit works: 0.000000176388 shares → 0.000306074 GOOGL + 0.28519 USDG (1% floor honoured: 0.000306074 GOOGL and 0.28519 USDG). USDG exit waits for a fresh Chainlink reference, by design",
-          "ms": 669
+          "status": "pass",
+          "detail": "0.000000176388 shares → tokens: 0.000246446 GOOGL + 0.306311 USDG · USDG only: 0.393407 USDG (floor 0.392197); with a 1% floor the token route returns 0.000246446 GOOGL and 0.306311 USDG",
+          "ms": 991
         },
         {
           "name": "INTC",
-          "status": "warn",
-          "detail": "Token exit works: 0.00000107991 shares → 0.00694404 INTC + 0.641283 USDG (1% floor honoured: 0.641283 USDG and 0.00694404 INTC). USDG exit waits for a fresh Chainlink reference, by design",
-          "ms": 736
+          "status": "pass",
+          "detail": "0.00000107991 shares → tokens: 0.00381818 INTC + 1.00403 USDG · USDG only: 1.451364 USDG (floor 1.448672); with a 1% floor the token route returns 1.00403 USDG and 0.00381818 INTC",
+          "ms": 1000
         },
         {
           "name": "META",
-          "status": "warn",
-          "detail": "Token exit works: 0.000000674272 shares → 0.00101433 META + 1.467267 USDG (1% floor honoured: 1.46727 USDG and 0.00101433 META). USDG exit waits for a fresh Chainlink reference, by design",
-          "ms": 667
+          "status": "pass",
+          "detail": "0.000000674272 shares → tokens: 0.000192847 META + 2.036574 USDG · USDG only: 2.173698 USDG (floor 2.171548); with a 1% floor the token route returns 2.03657 USDG and 0.000192847 META",
+          "ms": 1097
         },
         {
           "name": "MSFT",
-          "status": "warn",
-          "detail": "Token exit works: 0.00000015118 shares → 0.000366614 MSFT + 0.220846 USDG (1% floor honoured: 0.220846 USDG and 0.000366614 MSFT). USDG exit waits for a fresh Chainlink reference, by design",
-          "ms": 675
+          "status": "pass",
+          "detail": "0.00000015118 shares → tokens: 0.000358318 MSFT + 0.224994 USDG · USDG only: 0.402094 USDG (floor 0.397859); with a 1% floor the token route returns 0.224994 USDG and 0.000358318 MSFT",
+          "ms": 1056
         },
         {
           "name": "MSTR",
-          "status": "warn",
-          "detail": "Token exit works: 0.000000887717 shares → 0.000423136 MSTR + 2.154326 USDG (1% floor honoured: 2.15433 USDG and 0.000423136 MSTR). USDG exit waits for a fresh Chainlink reference, by design",
-          "ms": 678
+          "status": "pass",
+          "detail": "0.000000887717 shares → tokens: 0.00558558 MSTR + 1.352697 USDG · USDG only: 2.274421 USDG (floor 2.255852); with a 1% floor the token route returns 1.3527 USDG and 0.00558558 MSTR",
+          "ms": 1025
         },
         {
           "name": "MU",
           "status": "warn",
-          "detail": "Token exit works: 0.000000104916 shares → 0.000129639 MU + 0.263901 USDG (1% floor honoured: 0.263901 USDG and 0.000129639 MU). USDG exit waits for a fresh Chainlink reference, by design",
-          "ms": 683
+          "detail": "Token exit works: 0.000000104916 shares → 0.000104639 MU + 0.289607 USDG. USDG exit: Refused by design: the pool price is 136 ticks (1.36%) from its 30 minute average, at or beyond the router's 100 tick TWAP guard; swaps wait for the average to catch up",
+          "ms": 1018
         },
         {
           "name": "NVDA",
-          "status": "warn",
-          "detail": "Token exit works: 0.000000231143 shares → 0.000773739 NVDA + 0.229719 USDG (1% floor honoured: 0.229719 USDG and 0.000773739 NVDA). USDG exit waits for a fresh Chainlink reference, by design",
-          "ms": 697
+          "status": "pass",
+          "detail": "0.000000231143 shares → tokens: 0.000707336 NVDA + 0.244545 USDG · USDG only: 0.402449 USDG (floor 0.398848); with a 1% floor the token route returns 0.244545 USDG and 0.000707336 NVDA",
+          "ms": 1047
         },
         {
           "name": "PLTR",
-          "status": "warn",
-          "detail": "Token exit works: 0.00000213648 shares → 0.00467335 PLTR + 2.781488 USDG (1% floor honoured: 2.78149 USDG and 0.00467335 PLTR). USDG exit waits for a fresh Chainlink reference, by design",
-          "ms": 676
+          "status": "pass",
+          "detail": "0.00000213648 shares → tokens: 0.00331812 PLTR + 3.025489 USDG · USDG only: 3.615833 USDG (floor 3.613023); with a 1% floor the token route returns 3.02549 USDG and 0.00331812 PLTR",
+          "ms": 1058
         },
         {
           "name": "QQQ",
-          "status": "warn",
-          "detail": "Token exit works: 0.000000192432 shares → 0.000233215 QQQ + 0.225252 USDG (1% floor honoured: 0.225252 USDG and 0.000233215 QQQ). USDG exit waits for a fresh Chainlink reference, by design",
-          "ms": 676
+          "status": "pass",
+          "detail": "0.000000192432 shares → tokens: 0.000177669 QQQ + 0.26566 USDG · USDG only: 0.395757 USDG (floor 0.392227); with a 1% floor the token route returns 0.26566 USDG and 0.000177669 QQQ",
+          "ms": 1025
         },
         {
           "name": "SNDK",
-          "status": "warn",
-          "detail": "Token exit works: 0.0000000787578 shares → 0.0000372017 SNDK + 0.340597 USDG (1% floor honoured: 0.340597 USDG and 0.0000372017 SNDK). USDG exit waits for a fresh Chainlink reference, by design",
-          "ms": 663
+          "status": "pass",
+          "detail": "0.0000000787578 shares → tokens: 0.0000340611 SNDK + 0.346486 USDG · USDG only: 0.406664 USDG (floor 0.405465); with a 1% floor the token route returns 0.346486 USDG and 0.0000340611 SNDK",
+          "ms": 1105
         },
         {
           "name": "SPCX",
-          "status": "warn",
-          "detail": "Token exit works: 0.00000094362 shares → 0.00334888 SPCX + 0.861982 USDG (1% floor honoured: 0.00334888 SPCX and 0.861982 USDG). USDG exit waits for a fresh Chainlink reference, by design",
-          "ms": 682
+          "status": "pass",
+          "detail": "0.00000094362 shares → tokens: 0.00294553 SPCX + 0.925055 USDG · USDG only: 1.382284 USDG (floor 1.370499); with a 1% floor the token route returns 0.00294553 SPCX and 0.925055 USDG",
+          "ms": 1188
         },
         {
           "name": "SPY",
-          "status": "warn",
-          "detail": "Token exit works: 0.000000238681 shares → 0.000261442 SPY + 0.190546 USDG (1% floor honoured: 0.000261442 SPY and 0.190546 USDG). USDG exit waits for a fresh Chainlink reference, by design",
-          "ms": 649
+          "status": "pass",
+          "detail": "0.000000238681 shares → tokens: 0.000240813 SPY + 0.206352 USDG · USDG only: 0.390222 USDG (floor 0.386944); with a 1% floor the token route returns 0.000240813 SPY and 0.206352 USDG",
+          "ms": 1139
         },
         {
           "name": "TSLA",
-          "status": "warn",
-          "detail": "Token exit works: 0.0000117928 shares → 0.00147274 TSLA + 0.830353 USDG (1% floor honoured: 0.00147274 TSLA and 0.830353 USDG). USDG exit waits for a fresh Chainlink reference, by design",
-          "ms": 650
+          "status": "pass",
+          "detail": "0.0000117928 shares → tokens: 0.00110381 TSLA + 0.967164 USDG · USDG only: 1.380214 USDG (floor 1.374817); with a 1% floor the token route returns 0.00110381 TSLA and 0.967164 USDG",
+          "ms": 1161
         }
       ]
     },
@@ -656,21 +656,27 @@
           "name": "Bytecode",
           "status": "pass",
           "detail": "Matches the published artifact (solc 0.8.24, source sha256 45d71bf11123…)",
-          "ms": 84
+          "ms": 96
         },
         {
           "name": "Roles and limits",
           "status": "pass",
           "detail": "owner 0xA0D4Ed27…, keeper 0xA0D4Ed27…, guardian 0xA0D4Ed27…, treasury 0xA0D4Ed27…; cap 2500 USDG, fee 0.3% in and 0.3% out, max loss 3% per move and 1% of the cap or the pool per day, 8 target(s)",
-          "ms": 91
+          "ms": 106
         },
         {
           "name": "Targets",
           "status": "pass",
           "detail": "8 target(s): AMD 35%, CRCL 35%, INTC 35%, META 35%, MSTR 35%, PLTR 35%, SPCX 35%, TSLA 35%",
-          "ms": 2314
+          "ms": 8512
         }
       ]
+    },
+    {
+      "id": "governance",
+      "title": "Governance",
+      "description": "Not deployed yet; skipped.",
+      "checks": []
     },
     {
       "id": "lending",
@@ -679,21 +685,21 @@
       "checks": [
         {
           "name": "Market state",
-          "status": "warn",
-          "detail": "META V7 Lending closed at block 68253502: $600 supplied, $228 borrowed, utilisation 38.0%, oracle unavailable, bad debt 0",
-          "ms": 517
+          "status": "pass",
+          "detail": "META V7 Lending active at block 68860819: $600 supplied, $228 borrowed, utilisation 38.0%, oracle available, bad debt 0",
+          "ms": 685
         },
         {
           "name": "Position read",
           "status": "pass",
-          "detail": "Position endpoint answers for an arbitrary owner at block 68253513 (supply 0, collateral 0, debt 0)",
-          "ms": 92
+          "detail": "Position endpoint answers for an arbitrary owner at block 68860824 (supply 0, collateral 0, debt 0)",
+          "ms": 128
         },
         {
           "name": "Oracle guard",
-          "status": "warn",
-          "detail": "stale: Reference feed last updated 49 hours ago. Price-dependent actions wait for fresh pricing.",
-          "ms": 1193
+          "status": "pass",
+          "detail": "healthy: Reference feed updated 1 minutes ago. Price-dependent actions are allowed.",
+          "ms": 2569
         }
       ]
     },
@@ -705,14 +711,14 @@
         {
           "name": "Quote 100 USDG → AAPL",
           "status": "pass",
-          "detail": "KyberSwap route: 0.298964 AAPL out (≈$99.80458730174549), gas 431167",
-          "ms": 680
+          "detail": "KyberSwap route: 0.296767 AAPL out (≈$100.7078270180049), gas 467166",
+          "ms": 958
         },
         {
           "name": "Build calldata",
           "status": "pass",
-          "detail": "3844 bytes of calldata for router 0x6131…37b5 (contract present on chain)",
-          "ms": 690
+          "detail": "4132 bytes of calldata for router 0x6131…37b5 (contract present on chain)",
+          "ms": 527
         }
       ]
     },
@@ -725,31 +731,31 @@
           "name": "Supply and burn",
           "status": "pass",
           "detail": "1,000,000,000 minted, 10,748,880 (1.07%) held by the burn address, 989,251,120 circulating",
-          "ms": 98
+          "ms": 112
         },
         {
           "name": "Deployer wallet",
           "status": "pass",
           "detail": "0x0Ce9…56A2 holds no VERTEX, and has never received or sent an ERC-721, so it holds no liquidity position",
-          "ms": 1429
+          "ms": 3706
         },
         {
           "name": "Buyback wallet",
           "status": "pass",
           "detail": "0xBABe…5676 holds no VERTEX, and has never received or sent an ERC-721, so it holds no liquidity position",
-          "ms": 2293
+          "ms": 3265
         },
         {
           "name": "Launch contract",
           "status": "pass",
           "detail": "0xc906…0310 holds no VERTEX, and has never received or sent an ERC-721, so it holds no liquidity position",
-          "ms": 2606
+          "ms": 2850
         },
         {
           "name": "Liquidity venue",
           "status": "pass",
-          "detail": "321,203,760 VERTEX (32.12% of supply) sits in the Uniswap V4 singleton at 0x8366…0951, which custodies every pool on the chain",
-          "ms": 180
+          "detail": "360,596,120 VERTEX (36.06% of supply) sits in the Uniswap V4 singleton at 0x8366…0951, which custodies every pool on the chain",
+          "ms": 243
         }
       ]
     },
@@ -762,145 +768,145 @@
           "name": "GET /",
           "status": "pass",
           "detail": "200 text/html; charset=utf-8, 597 KB",
-          "ms": 974
+          "ms": 960
         },
         {
           "name": "GET /vaults",
           "status": "pass",
           "detail": "200 text/html; charset=utf-8, 462 KB",
-          "ms": 355
+          "ms": 188
         },
         {
           "name": "GET /vaults/055c02d0-7d61-4909-9331-47a1785c4f15",
           "status": "pass",
           "detail": "200 text/html; charset=utf-8, 433 KB",
-          "ms": 187
+          "ms": 176
         },
         {
           "name": "GET /lending",
           "status": "pass",
           "detail": "200 text/html; charset=utf-8, 423 KB",
-          "ms": 166
+          "ms": 168
         },
         {
           "name": "GET /lending/meta",
           "status": "pass",
           "detail": "200 text/html; charset=utf-8, 436 KB",
-          "ms": 188
+          "ms": 168
         },
         {
           "name": "GET /trade/swap",
           "status": "pass",
           "detail": "200 text/html; charset=utf-8, 426 KB",
-          "ms": 172
+          "ms": 192
         },
         {
           "name": "GET /portfolio",
           "status": "pass",
           "detail": "200 text/html; charset=utf-8, 419 KB",
-          "ms": 165
+          "ms": 193
         },
         {
           "name": "GET /strategies",
           "status": "pass",
           "detail": "200 text/html; charset=utf-8, 463 KB",
-          "ms": 172
+          "ms": 180
         },
         {
           "name": "GET /allocator",
           "status": "pass",
           "detail": "200 text/html; charset=utf-8, 428 KB",
-          "ms": 165
+          "ms": 200
         },
         {
           "name": "GET /intelligence",
           "status": "pass",
-          "detail": "200 text/html; charset=utf-8, 484 KB",
-          "ms": 1377
+          "detail": "200 text/html; charset=utf-8, 481 KB",
+          "ms": 184
         },
         {
           "name": "GET /docs",
           "status": "pass",
           "detail": "200 text/html; charset=utf-8, 533 KB",
-          "ms": 206
+          "ms": 175
         },
         {
           "name": "GET /help",
           "status": "pass",
           "detail": "200 text/html; charset=utf-8, 437 KB",
-          "ms": 171
+          "ms": 166
         },
         {
           "name": "GET /help/contact",
           "status": "pass",
           "detail": "200 text/html; charset=utf-8, 426 KB",
-          "ms": 172
+          "ms": 169
         },
         {
           "name": "GET /status",
           "status": "pass",
           "detail": "200 text/html; charset=utf-8, 455 KB",
-          "ms": 837
+          "ms": 1343
         },
         {
           "name": "API /api/public/vaults",
           "status": "pass",
-          "detail": "200: 18 vaults, 18 with a live snapshot, 0 with a fee APR, source onchain",
-          "ms": 155
+          "detail": "200: 18 vaults, 18 with a live snapshot, 18 with a fee APR, source onchain",
+          "ms": 201
         },
         {
           "name": "API /api/status",
           "status": "pass",
-          "detail": "200: Some systems are waiting on fresh data; api Operational, oracle stale, vault deployed, keeper execute",
-          "ms": 502
+          "detail": "200: All monitored systems operational; api Operational, oracle healthy, vault deployed, keeper execute",
+          "ms": 644
         },
         {
           "name": "API /api/lending/v2/markets",
           "status": "pass",
-          "detail": "200: 1 market(s), Closed",
-          "ms": 159
+          "detail": "200: 1 market(s), Active",
+          "ms": 149
         },
         {
           "name": "API /api/allocator",
-          "status": "warn",
-          "detail": "model v0.1: no candidate qualifies right now; 18 × Waiting for a fresh Chainlink reference; the vault fails closed until the feed updates; 1 × Market not active",
-          "ms": 145
+          "status": "pass",
+          "detail": "200: model v0.1, 5 position(s) summing to 1000.00 USDG, weights 1.0000; AMD 31.7%, MSTR 20.2%, CRCL 19.3%, INTC 17.6%, META 11.2%",
+          "ms": 151
         },
         {
           "name": "API /api/trade/quotes",
           "status": "pass",
-          "detail": "200: 1 quote(s) kyber 0.298964 AAPL",
-          "ms": 524
+          "detail": "200: 1 quote(s) kyber 0.296767 AAPL",
+          "ms": 1391
         },
         {
           "name": "API /api/trade/build",
           "status": "pass",
           "detail": "200: calldata for 0x6131…37b5 returned",
-          "ms": 784
+          "ms": 1063
         },
         {
           "name": "RPC relay allows reads",
           "status": "pass",
           "detail": "200: eth_chainId → 0x1237",
-          "ms": 263
+          "ms": 281
         },
         {
           "name": "RPC relay refuses writes",
           "status": "pass",
           "detail": "403: Method not allowed through the relay",
-          "ms": 146
+          "ms": 143
         },
         {
           "name": "Security headers",
           "status": "pass",
           "detail": "HSTS and nosniff present",
-          "ms": 181
+          "ms": 173
         },
         {
           "name": "www alias",
           "status": "warn",
           "detail": "www alias does not resolve yet (fetch failed)",
-          "ms": 554
+          "ms": 703
         }
       ]
     }
